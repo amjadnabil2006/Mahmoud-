@@ -90,7 +90,7 @@ export default function App() {
   const [bookingInitialDeptId, setBookingInitialDeptId] = useState<string>('psychiatry');
   const [bookingInitialStep, setBookingInitialStep] = useState<1 | 2>(1);
   const [isSelfDiagnosticModalOpen, setIsSelfDiagnosticModalOpen] = useState<boolean>(false);
-  const [patientInitialTab, setPatientInitialTab] = useState<'overview' | 'departments' | 'appointments' | 'meds' | 'scales' | 'exercises' | 'messages'>('overview');
+  const [patientTab, setPatientTab] = useState<'departments' | 'overview' | 'appointments' | 'meds' | 'scales' | 'exercises' | 'messages'>('departments');
 
   // Sync theme with document element
   useEffect(() => {
@@ -124,7 +124,17 @@ export default function App() {
       if (m.length) setMessages(m);
       if (ex.length) setExercises(ex);
       if (logs.length) setAuditLogs(logs);
-      if (notifs.length) setNotifications(notifs);
+      if (notifs.length) {
+        const seen = new Set<string>();
+        const deduped: AppNotification[] = [];
+        for (const n of notifs) {
+          if (!seen.has(n.id)) {
+            seen.add(n.id);
+            deduped.push(n);
+          }
+        }
+        setNotifications(deduped);
+      }
       setAnalytics(kpis);
     };
     loadData();
@@ -241,7 +251,11 @@ export default function App() {
       isRead: false
     });
 
-    setNotifications(prev => [aptNotif, payNotif, ...prev]);
+    setNotifications(prev => {
+      const existing = new Set(prev.map(n => n.id));
+      const toAdd = [aptNotif, payNotif].filter(n => !existing.has(n.id));
+      return [...toAdd, ...prev];
+    });
 
     await api.auditLogs.log({
       actorName: 'نظام الدفع والمواعيد (' + (saved.paymentMethod || 'PayPal') + ')',
@@ -253,42 +267,59 @@ export default function App() {
     });
   };
 
-  const handleSendMessage = async (text: string) => {
+  const handleSendMessage = async (text: string, targetDoctorId?: string) => {
+    const docId = targetDoctorId || 'doc-1';
+    const targetDoc = doctors.find(d => d.id === docId) || doctors[0];
+
     const saved = await api.messages.send({
-      senderId: activePortal === 'patient' ? activePatient.id : 'doc-1',
-      senderName: activePortal === 'patient' ? activePatient.name : 'د. طارق الحكيم',
+      senderId: activePortal === 'patient' ? activePatient.id : targetDoc.id,
+      senderName: activePortal === 'patient' ? activePatient.name : targetDoc.name,
       senderRole: activePortal === 'patient' ? 'patient' : 'doctor',
+      doctorId: targetDoc.id,
+      doctorName: targetDoc.name,
+      patientId: activePatient.id,
       text,
       isRead: true
     });
     setMessages(prev => prev.some(m => m.id === saved.id) ? prev : [...prev, saved]);
 
-    // If patient sent message, simulate doctor reply after 1.5 seconds for interactive realistic chat
+    // If patient sent message, simulate doctor reply after 1.2 seconds for interactive realistic chat
     if (activePortal === 'patient') {
       setTimeout(async () => {
-        const replies = [
-          `أهلاً بك يا ${activePatient.name}، قرأت استفسارك بعناية. سأناقش معك هذه النقطة بالتفصيل في موعد جلستنا المجدول عبر Google Meet. استمر على تعليمات الخطة العلاجية الحالية.`,
-          `وعليكم السلام، شكراً لمشاركتك هذه الملاحظة. هذه الأعراض متوقعة في هذه المرحلة من الخطة، وسأقوم بمتابعتها معك بدقة أثناء استشارتنا القادمة.`,
-          `تم استلام رسالتك وتدوينها في ملفك الطبي. أنصحك بإتمام فحص المقياس النفسي المقنن لمعرفة التطور في حالتك قبل موعدنا.`
-        ];
-        const randomReply = replies[Math.floor(Math.random() * replies.length)];
+        let doctorReplyText = `أهلاً بك يا ${activePatient.name}، قرأت استفسارك بعناية وسأتابعه معك في جلستنا المجدولة.`;
+        if (targetDoc.id === 'doc-1') {
+          doctorReplyText = `أهلاً بك يا ${activePatient.name}، تابعت ملاحظتك حول الأدوية والأعراض الإكلينيكية. استمري على الخطة الدوائية المعتمدة وسنراجع مقاييس التحسن في موعدنا القادم عبر Google Meet.`;
+        } else if (targetDoc.id === 'doc-2') {
+          doctorReplyText = `مرحباً ${activePatient.name}، أحسنتِ بملاحظة الفكرة المشوهة وتدوينها. تذكري تطبيق أسلوب إعادة الصياغة المعرفية وكتابة الفكرة البديلة المنطقية وسنناقشها في الجلسة.`;
+        } else if (targetDoc.id === 'doc-3') {
+          doctorReplyText = `أهلاً ${activePatient.name}، تعديل النظام الغذائي لدعم محور الأمعاء-الدماغ يحتاج لبعض التدرج لبناء مستويات السيروتونين الطبيعي وتخفيف الإجهاد العصبي. سنراجع النتائج سوياً.`;
+        } else if (targetDoc.id === 'doc-4') {
+          doctorReplyText = `مرحباً ${activePatient.name}، دعم المحيط الأسري والتوازن البيئي خطوة جوهرية في استدامة رحلة تعافيك. فريقنا الاستشاري متواجد لمساندتك دائماً.`;
+        }
+
         const docReply = await api.messages.send({
-          senderId: 'doc-1',
-          senderName: activePatient.assignedDoctor || 'د. طارق الحكيم',
+          senderId: targetDoc.id,
+          senderName: targetDoc.name,
           senderRole: 'doctor',
-          text: randomReply,
+          doctorId: targetDoc.id,
+          doctorName: targetDoc.name,
+          patientId: activePatient.id,
+          text: doctorReplyText,
           isRead: false
         });
         setMessages(prev => prev.some(m => m.id === docReply.id) ? prev : [...prev, docReply]);
 
         const chatNotif = await api.notifications.add({
-          title: `رسالة جديدة من ${docReply.senderName}`,
-          description: randomReply.substring(0, 80) + '...',
+          title: `رسالة جديدة من ${targetDoc.name}`,
+          description: doctorReplyText.substring(0, 80) + '...',
           type: 'chat',
           isRead: false
         });
-        setNotifications(prev => [chatNotif, ...prev]);
-      }, 1500);
+        setNotifications(prev => {
+          if (prev.some(n => n.id === chatNotif.id)) return prev;
+          return [chatNotif, ...prev];
+        });
+      }, 1200);
     }
   };
 
@@ -323,10 +354,23 @@ export default function App() {
     });
   };
 
+  const handleUpdateAppointmentStatus = async (id: string, status: Appointment['status']) => {
+    await api.appointments.updateStatus(id, status);
+    setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+    await api.auditLogs.log({
+      actorName: 'الطبيب المعالج',
+      actorRole: 'طبيب',
+      action: `تحديث حالة موعد الجلسة الإكلينيكية إلى: ${status}`,
+      target: `جلسة ${id}`,
+      ipAddress: '192.168.1.15',
+      status: 'نجاح'
+    });
+  };
+
   const pendingRiskCount = patients.filter(p => p.riskLevel === 'حرج' || p.riskLevel === 'مرتفع').length;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans text-slate-800 dark:text-slate-100 selection:bg-teal-500 selection:text-white transition-colors pb-16 md:pb-0" dir="rtl">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans text-slate-800 dark:text-slate-100 selection:bg-teal-500 selection:text-white transition-colors pb-16 md:pb-0 overflow-x-hidden w-full max-w-full" dir="rtl">
       
       {/* Top Application Header */}
       <Header
@@ -342,11 +386,11 @@ export default function App() {
         onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
         onOpenChat={() => {
           setActivePortal('patient');
-          setPatientInitialTab('messages');
+          setPatientTab('messages');
         }}
         onOpenAppointments={() => {
           setActivePortal('patient');
-          setPatientInitialTab('appointments');
+          setPatientTab('appointments');
         }}
         onSelectPatient={handleSelectPatient}
         onOpenOverview={() => setIsOverviewModalOpen(true)}
@@ -361,7 +405,7 @@ export default function App() {
       />
 
       {/* Main Container Area */}
-      <div className="flex-1 flex flex-col md:flex-row max-w-7xl w-full mx-auto">
+      <div className="flex-1 flex flex-col md:flex-row max-w-7xl w-full mx-auto overflow-hidden">
         
         {/* If Active Portal is DOCTOR: Show Clinical Workspace Sidebar */}
         {activePortal === 'doctor' && (
@@ -374,19 +418,23 @@ export default function App() {
         )}
 
         {/* Dynamic Portal View Container */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+        <main className="flex-1 p-3 sm:p-6 lg:p-8 overflow-y-auto max-w-full overflow-x-hidden">
           
           {/* 1. PATIENT / CLIENT PORTAL */}
           {activePortal === 'patient' && (
             <PatientPortalView
               patient={activePatient}
+              patients={patients}
+              onSelectPatient={handleSelectPatient}
+              doctors={doctors}
               appointments={appointments}
               prescriptions={prescriptions}
               scaleResults={scaleResults}
               messages={messages}
               exercises={exercises}
               notifications={notifications}
-              initialTab={patientInitialTab}
+              activeTab={patientTab}
+              onTabChange={setPatientTab}
               onBookAppointmentClick={() => {
                 setBookingInitialDeptId('psychiatry');
                 setBookingInitialStep(1);
@@ -419,6 +467,7 @@ export default function App() {
                   scaleResults={scaleResults}
                   prescriptions={prescriptions}
                   appointments={appointments}
+                  onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
                   onOpenQuickScale={handleOpenScaleRunner}
                   onOpenNewPrescription={() => setIsPrescriptionModalOpen(true)}
                   onOpenClinicalForm={handleOpenClinicalForm}
@@ -496,12 +545,13 @@ export default function App() {
       <MobileBottomNav
         activePortal={activePortal}
         setActivePortal={setActivePortal}
+        patientTab={patientTab}
+        onSelectPatientTab={(tab) => {
+          setActivePortal('patient');
+          setPatientTab(tab);
+        }}
         theme={theme}
         onToggleTheme={toggleTheme}
-        onOpenChat={() => {
-          setActivePortal('patient');
-          setPatientInitialTab('messages');
-        }}
         onOpenBooking={() => {
           setBookingInitialDeptId('psychiatry');
           setBookingInitialStep(1);
@@ -557,7 +607,7 @@ export default function App() {
         onOpenSelfDiagnostic={() => setIsSelfDiagnosticModalOpen(true)}
         onOpenChatWithDoctor={() => {
           setActivePortal('patient');
-          setPatientInitialTab('messages');
+          setPatientTab('messages');
         }}
         onOpenDiagnosticScale={(scaleId) => handleOpenScaleRunner(scaleId)}
       />

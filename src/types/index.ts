@@ -87,6 +87,9 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
   isRead: boolean;
+  doctorId?: string;
+  doctorName?: string;
+  patientId?: string;
 }
 
 export interface TherapyExercise {

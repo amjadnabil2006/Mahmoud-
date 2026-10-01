@@ -154,13 +154,13 @@ export const SelfDiagnosticTriageModal: React.FC<Props> = ({
                 2. منذ متى وأنت تعاني من هذه الأعراض؟
               </label>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {['أقل من أسبوعين', 'أكثر من أسبوعين', 'عدة أشهر أو أكثر من عام'].map(d => (
                   <button
                     key={d}
                     type="button"
                     onClick={() => setDuration(d)}
-                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer text-xs ${
                       duration === d
                         ? 'bg-teal-50 dark:bg-teal-950 border-teal-600 text-teal-900 dark:text-teal-200 font-bold'
                         : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
@@ -178,13 +178,13 @@ export const SelfDiagnosticTriageModal: React.FC<Props> = ({
                 3. ما مقدار تعطيل هذه الأعراض لعملك ودراستك وعلاقاتك؟
               </label>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {['تأثير طفيف أستطيع السيطرة عليه', 'تعطيل متوسط للعمل والمهام', 'عجز شديد وضيق لا يطاق'].map(imp => (
                   <button
                     key={imp}
                     type="button"
                     onClick={() => setSeverityImpact(imp)}
-                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                    className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer text-xs ${
                       severityImpact === imp
                         ? 'bg-teal-50 dark:bg-teal-950 border-teal-600 text-teal-900 dark:text-teal-200 font-bold'
                         : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'

@@ -54,6 +54,15 @@ export const AdminPortalView: React.FC<Props> = ({
   const [newDocLicense, setNewDocLicense] = useState<string>('MD-PSY-' + Math.floor(10000 + Math.random() * 90000));
   const [newDocPhone, setNewDocPhone] = useState<string>('050' + Math.floor(1000000 + Math.random() * 9000000));
 
+  // New Patient form state
+  const [showAddPatientModal, setShowAddPatientModal] = useState<boolean>(false);
+  const [newPatName, setNewPatName] = useState<string>('');
+  const [newPatAge, setNewPatAge] = useState<number>(28);
+  const [newPatGender, setNewPatGender] = useState<'ذكر' | 'أنثى'>('أنثى');
+  const [newPatDiagnosis, setNewPatDiagnosis] = useState<string>('اضطراب القلق العام وتوترات التكيف');
+  const [newPatRisk, setNewPatRisk] = useState<Patient['riskLevel']>('منخفض');
+  const [newPatDoctor, setNewPatDoctor] = useState<string>(doctors[0]?.name || 'د. طارق الحكيم');
+
   // Run simulated API request
   const handleTestEndpoint = async (endpoint: string) => {
     setSelectedEndpoint(endpoint);
@@ -96,7 +105,7 @@ export const AdminPortalView: React.FC<Props> = ({
       licenseNumber: newDocLicense,
       phone: newDocPhone,
       email: `${newDocName.split(' ')[0].toLowerCase()}@coolmind.clinic`,
-      avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80',
+      avatar: '/src/assets/images/dr_tariq_avatar_1790811098620.jpg',
       bio: 'ممارس صحي مرخص ومتخصص في الرعاية النفسية المتكاملة مع خبرة إكلينيكية واسعة.',
       rating: 4.9,
       reviewsCount: 38,
@@ -111,6 +120,30 @@ export const AdminPortalView: React.FC<Props> = ({
 
     setNewDocName('');
     setShowAddDocModal(false);
+  };
+
+  const handleCreatePatient = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPatName.trim()) return;
+
+    onAddNewPatient({
+      name: newPatName,
+      age: Number(newPatAge) || 28,
+      gender: newPatGender,
+      fileNumber: 'CM-' + Math.floor(1000 + Math.random() * 9000),
+      phone: '05' + Math.floor(10000000 + Math.random() * 90000000),
+      email: `${newPatName.split(' ')[0].toLowerCase()}@patient.coolmind.clinic`,
+      primaryDiagnosis: newPatDiagnosis,
+      assignedDoctor: newPatDoctor,
+      riskLevel: newPatRisk,
+      status: 'نشط',
+      lastVisit: 'اليوم',
+      activeMedsCount: 0,
+      completedScalesCount: 0
+    });
+
+    setNewPatName('');
+    setShowAddPatientModal(false);
   };
 
   return (
@@ -350,7 +383,110 @@ export const AdminPortalView: React.FC<Props> = ({
               <h2 className="font-bold text-base text-slate-900 dark:text-white">سجل المرضى الكامل (Patient Directory)</h2>
               <p className="text-xs text-slate-400">إجمالي {patients.length} ملفات طبية نشطة</p>
             </div>
+            <button
+              onClick={() => setShowAddPatientModal(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+            >
+              <Plus className="w-4 h-4" />
+              <span>فتح ملف مريض جديد</span>
+            </button>
           </div>
+
+          {/* Modal for adding patient */}
+          {showAddPatientModal && (
+            <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-5 space-y-4 border border-slate-200 dark:border-slate-800 text-right">
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white">فتح ملف مريض جديد بالعيادة</h3>
+                <form onSubmit={handleCreatePatient} className="space-y-3 text-xs">
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">اسم المريض الرباعي:</label>
+                    <input
+                      type="text"
+                      value={newPatName}
+                      onChange={(e) => setNewPatName(e.target.value)}
+                      placeholder="مثال: نورة فهد القحطاني"
+                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">العمر:</label>
+                      <input
+                        type="number"
+                        min="10"
+                        max="90"
+                        value={newPatAge}
+                        onChange={(e) => setNewPatAge(Number(e.target.value))}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">الجنس:</label>
+                      <select
+                        value={newPatGender}
+                        onChange={(e) => setNewPatGender(e.target.value as any)}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      >
+                        <option value="أنثى">أنثى</option>
+                        <option value="ذكر">ذكر</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">التشخيص الأولي:</label>
+                    <input
+                      type="text"
+                      value={newPatDiagnosis}
+                      onChange={(e) => setNewPatDiagnosis(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">مستوى الخطورة:</label>
+                      <select
+                        value={newPatRisk}
+                        onChange={(e) => setNewPatRisk(e.target.value as any)}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      >
+                        <option value="منخفض">منخفض</option>
+                        <option value="متوسط">متوسط</option>
+                        <option value="حرج">حرج</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">الطبيب المشرف:</label>
+                      <select
+                        value={newPatDoctor}
+                        onChange={(e) => setNewPatDoctor(e.target.value)}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      >
+                        {doctors.map(d => (
+                          <option key={d.id} value={d.name}>{d.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddPatientModal(false)}
+                      className="px-4 py-2 rounded-xl text-slate-500 hover:text-slate-700"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 bg-teal-700 text-white rounded-xl font-bold cursor-pointer hover:bg-teal-800"
+                    >
+                      إنشاء الملف الطبي
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-right">

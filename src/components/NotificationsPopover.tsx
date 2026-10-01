@@ -108,9 +108,9 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
               <p className="text-xs">لا توجد إشعارات حالياً</p>
             </div>
           ) : (
-            notifications.map(item => (
+            notifications.map((item, idx) => (
               <div 
-                key={item.id}
+                key={`notif-popover-${item.id || 'notif'}-${idx}`}
                 className={`p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 flex items-start gap-3 ${
                   !item.isRead ? 'bg-teal-50/40 dark:bg-teal-950/20' : ''
                 }`}

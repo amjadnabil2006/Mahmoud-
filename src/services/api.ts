@@ -24,7 +24,7 @@ export const INITIAL_DOCTORS: Doctor[] = [
     licenseNumber: 'MD-PSY-98442',
     phone: '0505112233',
     email: 'dr.tareq@coolmind.clinic',
-    avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=200&auto=format&fit=crop&q=80',
+    avatar: '/src/assets/images/dr_tariq_avatar_1790811098620.jpg',
     bio: 'استشاري معتمد بخبرة 16 عاماً في تشخيص وعلاج الاكتئاب المقاوم، اضطرابات القلق، اضطراب ثنائي القطب والوسواس، خبير بروتوكولات الأدوية النفسية الحديثة.',
     rating: 4.9,
     reviewsCount: 384,
@@ -45,7 +45,7 @@ export const INITIAL_DOCTORS: Doctor[] = [
     licenseNumber: 'CP-THER-44102',
     phone: '0505445566',
     email: 'maha.ghamdi@coolmind.clinic',
-    avatar: 'https://images.unsplash.com/photo-1594824813583-a4421b569502?w=200&auto=format&fit=crop&q=80',
+    avatar: '/src/assets/images/ms_maha_avatar_1790811107885.jpg',
     bio: 'أخصائية مرخصة متخصصة في علاج الصدمات النفسية، نوبات الهلع، الفوبيا، الرهاب الاجتماعي، وإعادة بناء التقدير الذاتي بتقنيات حديثة قائمة على الدليل.',
     rating: 4.9,
     reviewsCount: 295,
@@ -66,7 +66,7 @@ export const INITIAL_DOCTORS: Doctor[] = [
     licenseNumber: 'CN-NUT-33190',
     phone: '0505778899',
     email: 'reem.zahrani@coolmind.clinic',
-    avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=200&auto=format&fit=crop&q=80',
+    avatar: '/src/assets/images/ms_reem_avatar_1790811117719.jpg',
     bio: 'متخصصة في علاج اضطرابات الأكل (القهم والشره)، وربط الميكروبيوم بالأمراض العصبية وتثبيط الآثار الجانبية الأيضية لمضادات الذهان والاكتئاب.',
     rating: 4.8,
     reviewsCount: 168,
@@ -87,7 +87,7 @@ export const INITIAL_DOCTORS: Doctor[] = [
     licenseNumber: 'SW-SOC-11082',
     phone: '0505990011',
     email: 'aziz.tamimi@coolmind.clinic',
-    avatar: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=200&auto=format&fit=crop&q=80',
+    avatar: '/src/assets/images/mr_abdulaziz_avatar_1790811127736.jpg',
     bio: 'خبير العلاقات الأسرية ودعم بيئة المريض النفسي، حل النزاعات الزوجية، ومساعدة المتعافين على العودة للبيئة الوظيفية والمجتمعية بدون وصمة.',
     rating: 4.7,
     reviewsCount: 142,
@@ -186,11 +186,15 @@ export const INITIAL_EXERCISES: TherapyExercise[] = [
 ];
 
 export const INITIAL_MESSAGES: ChatMessage[] = [
+  // Conversation with Dr. Tariq Al-Hakim (Psychiatry)
   {
     id: 'msg-1',
     senderId: 'doc-1',
     senderName: 'د. طارق الحكيم',
     senderRole: 'doctor',
+    doctorId: 'doc-1',
+    doctorName: 'د. طارق الحكيم',
+    patientId: 'pat-101',
     text: 'أهلاً بك يا سارة، كيف تسير الأمور مع جرعة دواء سيبرالكس في الأيام الثلاثة الأخيرة؟',
     timestamp: '2026-09-29T10:15:00Z',
     isRead: true
@@ -200,6 +204,9 @@ export const INITIAL_MESSAGES: ChatMessage[] = [
     senderId: 'pat-101',
     senderName: 'سارة خالد المنصور',
     senderRole: 'patient',
+    doctorId: 'doc-1',
+    doctorName: 'د. طارق الحكيم',
+    patientId: 'pat-101',
     text: 'أهلاً دكتور، الغثيان الخفيف اختفى تماماً وبدأت أشعر بتحسن بسيط في ساعات الصباح، وأتممت تمرين التنفس اليومي.',
     timestamp: '2026-09-29T10:22:00Z',
     isRead: true
@@ -209,8 +216,113 @@ export const INITIAL_MESSAGES: ChatMessage[] = [
     senderId: 'doc-1',
     senderName: 'د. طارق الحكيم',
     senderRole: 'doctor',
+    doctorId: 'doc-1',
+    doctorName: 'د. طارق الحكيم',
+    patientId: 'pat-101',
     text: 'ممتاز جداً ومبشر، استمري على نفس الجرعة وسنراجع مقياس PHQ-9 في جلستنا القادمة يوم الأربعاء عبر Google Meet.',
     timestamp: '2026-09-29T10:30:00Z',
+    isRead: true
+  },
+
+  // Conversation with Ms. Maha Al-Ghamdi (Psychotherapy CBT)
+  {
+    id: 'msg-4',
+    senderId: 'doc-2',
+    senderName: 'أ. مها الغامدي',
+    senderRole: 'doctor',
+    doctorId: 'doc-2',
+    doctorName: 'أ. مها الغامدي',
+    patientId: 'pat-101',
+    text: 'مرحباً سارة، هل تمكنتِ من تدوين الأفكار التلقائية السلبية في مفكرة CBT لهذا الأسبوع؟',
+    timestamp: '2026-09-29T14:10:00Z',
+    isRead: true
+  },
+  {
+    id: 'msg-5',
+    senderId: 'pat-101',
+    senderName: 'سارة خالد المنصور',
+    senderRole: 'patient',
+    doctorId: 'doc-2',
+    doctorName: 'أ. مها الغامدي',
+    patientId: 'pat-101',
+    text: 'نعم أستاذة مها، دونت ثلاثة مواقف شعرت فيها بالقلق الاجتماعي وحاولت كتابة أفكار بديلة منطقية.',
+    timestamp: '2026-09-29T14:45:00Z',
+    isRead: true
+  },
+  {
+    id: 'msg-6',
+    senderId: 'doc-2',
+    senderName: 'أ. مها الغامدي',
+    senderRole: 'doctor',
+    doctorId: 'doc-2',
+    doctorName: 'أ. مها الغامدي',
+    patientId: 'pat-101',
+    text: 'رائع جداً! هذا تقدم ملموس في تفكيك التفكير الكارثي، سنناقشها سوياً في جلستنا الافتراضية القادمة.',
+    timestamp: '2026-09-29T15:00:00Z',
+    isRead: true
+  },
+
+  // Conversation with Ms. Reem Al-Zahrani (Nutritional Psychiatry)
+  {
+    id: 'msg-7',
+    senderId: 'doc-3',
+    senderName: 'أ. ريم الزهراني',
+    senderRole: 'doctor',
+    doctorId: 'doc-3',
+    doctorName: 'أ. ريم الزهراني',
+    patientId: 'pat-101',
+    text: 'السلام عليكم سارة، راجعت جدولك الغذائي الداعم لمحور الأمعاء-الدماغ، كيف كانت استجابة جهازك الهضمي للألياف المخمرة والبروبيوتيك؟',
+    timestamp: '2026-09-28T11:20:00Z',
+    isRead: true
+  },
+  {
+    id: 'msg-8',
+    senderId: 'pat-101',
+    senderName: 'سارة خالد المنصور',
+    senderRole: 'patient',
+    doctorId: 'doc-3',
+    doctorName: 'أ. ريم الزهراني',
+    patientId: 'pat-101',
+    text: 'وعليكم السلام، الانتفاخ قلّ كثيراً وطاقتي في فترة بعد الظهر أصبحت أفضل مع تقليل السكريات المكررة.',
+    timestamp: '2026-09-28T12:05:00Z',
+    isRead: true
+  },
+  {
+    id: 'msg-9',
+    senderId: 'doc-3',
+    senderName: 'أ. ريم الزهراني',
+    senderRole: 'doctor',
+    doctorId: 'doc-3',
+    doctorName: 'أ. ريم الزهراني',
+    patientId: 'pat-101',
+    text: 'أخبار سارة جداً! سنضيف مصادر غنية بالمغنيسيوم وأوميغا-3 لدعم تصنيع السيروتونين الطبيعي.',
+    timestamp: '2026-09-28T12:30:00Z',
+    isRead: true
+  },
+
+  // Conversation with Mr. Abdulaziz Al-Tamimi (Psychiatric Social Work)
+  {
+    id: 'msg-10',
+    senderId: 'doc-4',
+    senderName: 'أ. عبدالعزيز التميمي',
+    senderRole: 'doctor',
+    doctorId: 'doc-4',
+    doctorName: 'أ. عبدالعزيز التميمي',
+    patientId: 'pat-101',
+    text: 'أهلاً سارة، كيف تسير خطة إعادة ترتيب بيئة العمل والتواصل الصحي مع الأسرة؟ فريقنا الاجتماعي متواجد دائماً لمساندتك.',
+    timestamp: '2026-09-27T16:00:00Z',
+    isRead: true
+  },
+  {
+    id: 'msg-11',
+    senderId: 'pat-101',
+    senderName: 'سارة خالد المنصور',
+    senderRole: 'patient',
+    doctorId: 'doc-4',
+    doctorName: 'أ. عبدالعزيز التميمي',
+    patientId: 'pat-101',
+    text: 'شكراً أستاذ عبدالعزيز، تحدثت مع أسرتي حول حاجتي لأوقات راحة وبدأوا يتفهمون الخطة العلاجية بشكل ممتاز.',
+    timestamp: '2026-09-27T16:30:00Z',
     isRead: true
   }
 ];
@@ -497,10 +609,30 @@ export const api = {
 
   notifications: {
     getAll: async (): Promise<AppNotification[]> => {
-      return getStorage('notifications', INITIAL_NOTIFICATIONS);
+      const all = getStorage('notifications', INITIAL_NOTIFICATIONS);
+      const seen = new Set<string>();
+      const deduplicated: AppNotification[] = [];
+      let hasDuplicates = false;
+
+      for (const n of all) {
+        if (!n.id || seen.has(n.id)) {
+          hasDuplicates = true;
+          const freshId = generateUniqueId('notif');
+          seen.add(freshId);
+          deduplicated.push({ ...n, id: freshId });
+        } else {
+          seen.add(n.id);
+          deduplicated.push(n);
+        }
+      }
+
+      if (hasDuplicates) {
+        setStorage('notifications', deduplicated);
+      }
+      return deduplicated;
     },
     add: async (notif: Omit<AppNotification, 'id' | 'timestamp'>): Promise<AppNotification> => {
-      const all = getStorage('notifications', INITIAL_NOTIFICATIONS);
+      const all = await api.notifications.getAll();
       const newNotif: AppNotification = {
         ...notif,
         id: generateUniqueId('notif'),
@@ -511,7 +643,7 @@ export const api = {
       return newNotif;
     },
     markAllAsRead: async (): Promise<AppNotification[]> => {
-      const all = getStorage('notifications', INITIAL_NOTIFICATIONS);
+      const all = await api.notifications.getAll();
       const updated = all.map(n => ({ ...n, isRead: true }));
       setStorage('notifications', updated);
       return updated;
