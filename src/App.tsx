@@ -34,7 +34,8 @@ import {
   TherapyExercise, 
   AuditLog, 
   ClinicAnalytics,
-  AppNotification
+  AppNotification,
+  ClinicSettings
 } from './types';
 
 import { 
@@ -45,9 +46,13 @@ import {
   INITIAL_MESSAGES, 
   INITIAL_AUDIT_LOGS, 
   INITIAL_ANALYTICS,
-  INITIAL_NOTIFICATIONS
+  INITIAL_NOTIFICATIONS,
+  INITIAL_SETTINGS
 } from './services/api';
 import { INITIAL_PATIENTS, INITIAL_ASSESSMENT_RESULTS, INITIAL_PRESCRIPTIONS } from './data/mockPatients';
+import { Department, CLINICAL_DEPARTMENTS } from './data/departments';
+import { DepartmentManagementModal } from './components/DepartmentManagementModal';
+import { Megaphone } from 'lucide-react';
 
 export default function App() {
   // Theme state: dark / light
@@ -63,6 +68,8 @@ export default function App() {
   const [currentRole, setCurrentRole] = useState<UserRole>('psychiatrist');
 
   // Data Collections
+  const [clinicSettings, setClinicSettings] = useState<ClinicSettings>(INITIAL_SETTINGS);
+  const [departments, setDepartments] = useState<Department[]>(CLINICAL_DEPARTMENTS);
   const [patients, setPatients] = useState<Patient[]>(INITIAL_PATIENTS);
   const [activePatientId, setActivePatientId] = useState<string>(INITIAL_PATIENTS[0].id);
   const [doctors, setDoctors] = useState<Doctor[]>(INITIAL_DOCTORS);
@@ -76,6 +83,8 @@ export default function App() {
   const [notifications, setNotifications] = useState<AppNotification[]>(INITIAL_NOTIFICATIONS);
 
   // Modals state
+  const [isDepartmentModalOpen, setIsDepartmentModalOpen] = useState<boolean>(false);
+  const [departmentToEdit, setDepartmentToEdit] = useState<Department | null>(null);
   const [isOverviewModalOpen, setIsOverviewModalOpen] = useState<boolean>(false);
   const [isScaleRunnerModalOpen, setIsScaleRunnerModalOpen] = useState<boolean>(false);
   const [runnerScaleId, setRunnerScaleId] = useState<string>('phq-9');
@@ -105,6 +114,8 @@ export default function App() {
   // Load from local storage on mount
   useEffect(() => {
     const loadData = async () => {
+      const sets = await api.settings.get();
+      const depts = await api.departments.getAll();
       const p = await api.patients.getAll();
       const d = await api.doctors.getAll();
       const a = await api.appointments.getAll();
@@ -116,6 +127,8 @@ export default function App() {
       const kpis = await api.analytics.getKPIs();
       const notifs = await api.notifications.getAll();
 
+      if (sets) setClinicSettings(sets);
+      if (depts.length) setDepartments(depts);
       if (p.length) setPatients(p);
       if (d.length) setDoctors(d);
       if (a.length) setAppointments(a);
@@ -153,6 +166,202 @@ export default function App() {
 
   const handleSelectPatient = (patient: Patient) => {
     setActivePatientId(patient.id);
+  };
+
+  // Department Management Handlers
+  const handleOpenDepartmentManager = (dept?: Department) => {
+    setDepartmentToEdit(dept || null);
+    setIsDepartmentModalOpen(true);
+  };
+
+  const handleCreateDepartment = async (deptData: Omit<Department, 'id'> & { id?: string }) => {
+    const created = await api.departments.create(deptData);
+    const updated = [...departments, created];
+    setDepartments(updated);
+
+    await api.auditLogs.log({
+      actorName: 'مدير المنصة',
+      actorRole: 'admin',
+      action: `إضافة قسم طبي جديد: ${created.nameAr}`,
+      target: `أقسام العيادة / ${created.id}`,
+      ipAddress: '192.168.1.1',
+      status: 'نجاح'
+    });
+  };
+
+  const handleUpdateDepartment = async (id: string, updatedFields: Partial<Department>) => {
+    const updated = await api.departments.update(id, updatedFields);
+    const newDepts = departments.map(d => d.id === id ? updated : d);
+    setDepartments(newDepts);
+
+    await api.auditLogs.log({
+      actorName: 'مدير المنصة',
+      actorRole: 'admin',
+      action: `تعديل بيانات قسم طبي: ${updated.nameAr}`,
+      target: `أقسام العيادة / ${id}`,
+      ipAddress: '192.168.1.1',
+      status: 'نجاح'
+    });
+  };
+
+  const handleDeleteDepartment = async (id: string) => {
+    const targetDept = departments.find(d => d.id === id);
+    await api.departments.delete(id);
+    const newDepts = departments.filter(d => d.id !== id);
+    setDepartments(newDepts);
+
+    await api.auditLogs.log({
+      actorName: 'مدير المنصة',
+      actorRole: 'admin',
+      action: `حذف قسم طبي: ${targetDept?.nameAr || id}`,
+      target: `أقسام العيادة / ${id}`,
+      ipAddress: '192.168.1.1',
+      status: 'نجاح'
+    });
+  };
+
+  const handleResetDepartments = async () => {
+    const reset = await api.departments.resetToDefault();
+    setDepartments(reset);
+
+    await api.auditLogs.log({
+      actorName: 'مدير المنصة',
+      actorRole: 'admin',
+      action: 'استعادة الأقسام الطبية الافتراضية الأربعة',
+      target: 'أقسام العيادة',
+      ipAddress: '192.168.1.1',
+      status: 'نجاح'
+    });
+  };
+
+  // Full Admin Platform Handlers
+  const handleUpdateSettings = async (newSettings: Partial<ClinicSettings>) => {
+    const updated = await api.settings.update(newSettings);
+    setClinicSettings(updated);
+    await api.auditLogs.log({
+      actorName: 'مدير المنصة',
+      actorRole: 'admin',
+      action: 'تحديث وتطبيق إعدادات المنصة والموقع',
+      target: 'إعدادات الموقع',
+      ipAddress: '192.168.1.1',
+      status: 'نجاح'
+    });
+  };
+
+  const handleResetSettings = async () => {
+    const reset = await api.settings.reset();
+    setClinicSettings(reset);
+    await api.auditLogs.log({
+      actorName: 'مدير المنصة',
+      actorRole: 'admin',
+      action: 'استعادة إعدادات المنصة الافتراضية بالكامل',
+      target: 'إعدادات الموقع',
+      ipAddress: '192.168.1.1',
+      status: 'نجاح'
+    });
+  };
+
+  const handleUpdateDoctor = async (id: string, updated: Partial<Doctor>) => {
+    const doc = await api.doctors.update(id, updated);
+    setDoctors(prev => prev.map(d => d.id === id ? doc : d));
+    await api.auditLogs.log({
+      actorName: 'مدير المنصة',
+      actorRole: 'admin',
+      action: `تعديل بيانات الطبيب: ${doc.name}`,
+      target: `طبيب / ${id}`,
+      ipAddress: '192.168.1.1',
+      status: 'نجاح'
+    });
+  };
+
+  const handleDeleteDoctor = async (id: string) => {
+    const target = doctors.find(d => d.id === id);
+    await api.doctors.delete(id);
+    setDoctors(prev => prev.filter(d => d.id !== id));
+    await api.auditLogs.log({
+      actorName: 'مدير المنصة',
+      actorRole: 'admin',
+      action: `حذف حساب طبيب: ${target?.name || id}`,
+      target: `طبيب / ${id}`,
+      ipAddress: '192.168.1.1',
+      status: 'نجاح'
+    });
+  };
+
+  const handleUpdatePatient = async (id: string, updated: Partial<Patient>) => {
+    const pat = await api.patients.update(id, updated);
+    setPatients(prev => prev.map(p => p.id === id ? pat : p));
+    await api.auditLogs.log({
+      actorName: 'مدير المنصة',
+      actorRole: 'admin',
+      action: `تحديث ملف المريض: ${pat.name}`,
+      target: `مريض / ${pat.fileNumber}`,
+      ipAddress: '192.168.1.1',
+      status: 'نجاح'
+    });
+  };
+
+  const handleDeletePatient = async (id: string) => {
+    const target = patients.find(p => p.id === id);
+    await api.patients.delete(id);
+    setPatients(prev => prev.filter(p => p.id !== id));
+    await api.auditLogs.log({
+      actorName: 'مدير المنصة',
+      actorRole: 'admin',
+      action: `أرشفة وحذف ملف مريض: ${target?.name || id}`,
+      target: `مريض / ${id}`,
+      ipAddress: '192.168.1.1',
+      status: 'نجاح'
+    });
+  };
+
+  const handleUpdateAppointment = async (id: string, updated: Partial<Appointment>) => {
+    const appt = await api.appointments.update(id, updated);
+    setAppointments(prev => prev.map(a => a.id === id ? appt : a));
+    await api.auditLogs.log({
+      actorName: 'مدير المنصة',
+      actorRole: 'admin',
+      action: `تعديل حجز الجلسة للمريض: ${appt.patientName}`,
+      target: `حجز / ${id}`,
+      ipAddress: '192.168.1.1',
+      status: 'نجاح'
+    });
+  };
+
+  const handleDeleteAppointment = async (id: string) => {
+    await api.appointments.delete(id);
+    setAppointments(prev => prev.filter(a => a.id !== id));
+    await api.auditLogs.log({
+      actorName: 'مدير المنصة',
+      actorRole: 'admin',
+      action: `إلغاء وحذف موعد حجز: ${id}`,
+      target: `حجز / ${id}`,
+      ipAddress: '192.168.1.1',
+      status: 'نجاح'
+    });
+  };
+
+  const handleAddExercise = async (ex: Omit<TherapyExercise, 'id'>) => {
+    const created = await api.exercises.create(ex);
+    setExercises(prev => [created, ...prev]);
+    await api.auditLogs.log({
+      actorName: 'مدير المنصة',
+      actorRole: 'admin',
+      action: `إضافة تمرين سلوكي جديد: ${created.titleAr}`,
+      target: `تمرين / ${created.id}`,
+      ipAddress: '192.168.1.1',
+      status: 'نجاح'
+    });
+  };
+
+  const handleUpdateExercise = async (id: string, updated: Partial<TherapyExercise>) => {
+    const ex = await api.exercises.update(id, updated);
+    setExercises(prev => prev.map(e => e.id === id ? ex : e));
+  };
+
+  const handleDeleteExercise = async (id: string) => {
+    await api.exercises.delete(id);
+    setExercises(prev => prev.filter(e => e.id !== id));
   };
 
   const handleOpenScaleRunner = (scaleId?: string) => {
@@ -398,6 +607,20 @@ export default function App() {
         onOpenNewPrescription={() => setIsPrescriptionModalOpen(true)}
       />
 
+      {/* Dynamic Announcement Banner from Clinic Settings */}
+      {clinicSettings.showAnnouncementBanner && clinicSettings.announcementText && (
+        <div className={`w-full py-2 px-4 text-xs font-bold text-center border-b transition-colors flex items-center justify-center gap-2 ${
+          clinicSettings.announcementType === 'warning'
+            ? 'bg-amber-500 text-slate-950 border-amber-600'
+            : clinicSettings.announcementType === 'success'
+            ? 'bg-emerald-600 text-white border-emerald-700'
+            : 'bg-teal-700 text-white border-teal-800'
+        }`}>
+          <Megaphone className="w-3.5 h-3.5 shrink-0" />
+          <span>{clinicSettings.announcementText}</span>
+        </div>
+      )}
+
       {/* Portal Switcher Banner for Quick Access */}
       <PortalSwitcherBanner
         activePortal={activePortal}
@@ -427,6 +650,8 @@ export default function App() {
               patients={patients}
               onSelectPatient={handleSelectPatient}
               doctors={doctors}
+              departments={departments}
+              settings={clinicSettings}
               appointments={appointments}
               prescriptions={prescriptions}
               scaleResults={scaleResults}
@@ -532,9 +757,29 @@ export default function App() {
               analytics={analytics}
               doctors={doctors}
               patients={patients}
+              departments={departments}
+              appointments={appointments}
+              exercises={exercises}
+              settings={clinicSettings}
               auditLogs={auditLogs}
               onAddNewDoctor={handleAddNewDoctor}
+              onUpdateDoctor={handleUpdateDoctor}
+              onDeleteDoctor={handleDeleteDoctor}
               onAddNewPatient={handleAddNewPatient}
+              onUpdatePatient={handleUpdatePatient}
+              onDeletePatient={handleDeletePatient}
+              onUpdateAppointment={handleUpdateAppointment}
+              onDeleteAppointment={handleDeleteAppointment}
+              onAddExercise={handleAddExercise}
+              onUpdateExercise={handleUpdateExercise}
+              onDeleteExercise={handleDeleteExercise}
+              onUpdateSettings={handleUpdateSettings}
+              onResetSettings={handleResetSettings}
+              onCreateDepartment={handleCreateDepartment}
+              onUpdateDepartment={handleUpdateDepartment}
+              onDeleteDepartment={handleDeleteDepartment}
+              onResetDepartments={handleResetDepartments}
+              onOpenDepartmentManagerModal={handleOpenDepartmentManager}
             />
           )}
 
@@ -553,7 +798,7 @@ export default function App() {
         theme={theme}
         onToggleTheme={toggleTheme}
         onOpenBooking={() => {
-          setBookingInitialDeptId('psychiatry');
+          setBookingInitialDeptId(departments[0]?.id || 'psychiatry');
           setBookingInitialStep(1);
           setIsBookingModalOpen(true);
         }}
@@ -561,6 +806,21 @@ export default function App() {
       />
 
       {/* Modals & Dialogs */}
+      <DepartmentManagementModal
+        isOpen={isDepartmentModalOpen}
+        onClose={() => {
+          setIsDepartmentModalOpen(false);
+          setDepartmentToEdit(null);
+        }}
+        departments={departments}
+        doctors={doctors}
+        onCreateDepartment={handleCreateDepartment}
+        onUpdateDepartment={handleUpdateDepartment}
+        onDeleteDepartment={handleDeleteDepartment}
+        onResetDepartments={handleResetDepartments}
+        initialEditDepartment={departmentToEdit}
+      />
+
       <CoolMindOverviewBanner
         isOpen={isOverviewModalOpen}
         onClose={() => setIsOverviewModalOpen(false)}
@@ -601,6 +861,7 @@ export default function App() {
         onClose={() => setIsBookingModalOpen(false)}
         activePatient={activePatient}
         doctors={doctors}
+        departments={departments}
         initialDeptId={bookingInitialDeptId}
         initialStep={bookingInitialStep}
         onCompleteBooking={handleBookAppointment}

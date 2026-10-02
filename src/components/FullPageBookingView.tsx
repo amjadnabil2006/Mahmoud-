@@ -29,6 +29,7 @@ import { Doctor, Patient, Appointment } from '../types';
 interface FullPageBookingProps {
   activePatient: Patient;
   doctors: Doctor[];
+  departments?: Department[];
   initialDeptId?: string;
   initialStep?: 1 | 2 | 3 | 4;
   onCompleteBooking: (appointment: Omit<Appointment, 'id'>) => void;
@@ -41,6 +42,7 @@ interface FullPageBookingProps {
 export const FullPageBookingView: React.FC<FullPageBookingProps> = ({
   activePatient,
   doctors,
+  departments = CLINICAL_DEPARTMENTS,
   initialDeptId,
   initialStep,
   onCompleteBooking,
@@ -80,7 +82,7 @@ export const FullPageBookingView: React.FC<FullPageBookingProps> = ({
   const departmentDoctors = doctors.filter(d => d.departmentId === selectedDeptId);
   // Only fallback to a doctor for fee calculation if none explicitly chosen
   const activeDoctor = doctors.find(d => d.id === selectedDoctorId) || departmentDoctors[0] || doctors[0];
-  const activeDept = CLINICAL_DEPARTMENTS.find(d => d.id === selectedDeptId) || CLINICAL_DEPARTMENTS[0];
+  const activeDept = departments.find(d => d.id === selectedDeptId) || departments[0] || CLINICAL_DEPARTMENTS[0];
 
   // Auto-Match feature: picks best rated doctor available with clear explanation
   const handleAutoMatchDoctor = () => {
@@ -283,7 +285,7 @@ export const FullPageBookingView: React.FC<FullPageBookingProps> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {CLINICAL_DEPARTMENTS.map((dept) => {
+                {departments.map((dept) => {
                   const isSelected = selectedDeptId === dept.id;
 
                   return (

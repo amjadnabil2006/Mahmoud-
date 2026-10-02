@@ -32,7 +32,9 @@ import {
   PhoneCall,
   ShieldCheck,
   Stethoscope,
-  Info
+  Info,
+  SlidersHorizontal,
+  Edit3
 } from 'lucide-react';
 import { 
   Patient, 
@@ -42,10 +44,12 @@ import {
   ScaleAssessmentResult, 
   ChatMessage, 
   TherapyExercise,
-  AppNotification
+  AppNotification,
+  ClinicSettings
 } from '../types';
-import { CLINICAL_DEPARTMENTS } from '../data/departments';
-import { INITIAL_DOCTORS } from '../services/api';
+import { Department, CLINICAL_DEPARTMENTS, getDepartmentColorStyles } from '../data/departments';
+import { DepartmentIcon } from '../components/DepartmentIcon';
+import { INITIAL_DOCTORS, INITIAL_SETTINGS } from '../services/api';
 
 export type PatientTabId = 'departments' | 'overview' | 'appointments' | 'meds' | 'scales' | 'exercises' | 'messages';
 
@@ -54,6 +58,8 @@ interface Props {
   patients?: Patient[];
   onSelectPatient?: (p: Patient) => void;
   doctors?: Doctor[];
+  departments?: Department[];
+  settings?: ClinicSettings;
   appointments: Appointment[];
   prescriptions: Prescription[];
   scaleResults: ScaleAssessmentResult[];
@@ -77,6 +83,8 @@ export const PatientPortalView: React.FC<Props> = ({
   patients = [],
   onSelectPatient,
   doctors = INITIAL_DOCTORS,
+  departments = CLINICAL_DEPARTMENTS,
+  settings = INITIAL_SETTINGS,
   appointments,
   prescriptions,
   scaleResults,
@@ -212,16 +220,28 @@ export const PatientPortalView: React.FC<Props> = ({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-teal-100 text-xs font-bold border border-white/15">
                     <Heart className="w-3.5 h-3.5 text-rose-300 fill-current" />
-                    <span>المنصة الرئيسية للعيادة والطب النفسي الرقمي</span>
+                    <span>{settings.clinicNameAr || 'المنصة الرئيسية للعيادة والطب النفسي الرقمي'}</span>
                   </span>
                 </div>
 
                 <h1 className="text-xl sm:text-3xl font-black tracking-tight leading-snug">
-                  مرحباً بك في CoolMind · عيادتك النفسية الشاملة
+                  {settings.heroHeadline || 'مرحباً بك في CoolMind · عيادتك النفسية الشاملة'}
                 </h1>
                 <p className="text-slate-200 text-xs sm:text-sm max-w-2xl leading-relaxed">
-                  تصفح الأقسام الطبية الأربعة لحجز استشارتك مع الأطباء الاستشاريين، أو أجرِ الفحص الذاتي لتشخيص حالتك بدقة، وتواصل مباشرة عبر الدردشة الطبية المعتمدة.
+                  {settings.heroSubtitle || 'تصفح الأقسام الطبية الأربعة لحجز استشارتك مع الأطباء الاستشاريين، أو أجرِ الفحص الذاتي لتشخيص حالتك بدقة، وتواصل مباشرة عبر الدردشة الطبية المعتمدة.'}
                 </p>
+
+                {/* 4 Feature Badges from Settings */}
+                <div className="flex flex-wrap gap-2 pt-1 text-[11px] text-teal-100">
+                  {[settings.heroBadge1, settings.heroBadge2, settings.heroBadge3, settings.heroBadge4]
+                    .filter(Boolean)
+                    .map((badge, idx) => (
+                      <span key={idx} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-white/10 border border-white/10 font-medium">
+                        <Check className="w-3 h-3 text-emerald-300" />
+                        <span>{badge}</span>
+                      </span>
+                    ))}
+                </div>
 
                 {/* Quick Action Navigation Buttons on Homepage */}
                 <div className="flex flex-wrap items-center gap-2 pt-2">
@@ -251,19 +271,22 @@ export const PatientPortalView: React.FC<Props> = ({
                 </div>
               </div>
 
-              {/* Clinic Accreditation Badge */}
+              {/* Clinic Accreditation Badge & Quick Stats */}
               <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15 shrink-0 space-y-2 w-full sm:w-64">
                 <div className="flex items-center gap-2 text-teal-200 font-bold text-xs">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
                   <span>معايير إكلينيكية معتمدة</span>
                 </div>
                 <p className="text-[11px] text-slate-200 leading-relaxed">
-                  استشارات افتراضية عبر Google Meet، خصوصية وسرية طبية تامة، وتشخيص وفق معايير DSM-5 الدولية.
+                  استشارات افتراضية وحضورية، سرية طبية مشفرة، وتشخيص وفق معايير DSM-5 و ICD-11 الدولية.
                 </p>
-                <div className="pt-1 border-t border-white/15 flex items-center justify-between text-[10px] text-teal-200">
-                  <span>الأقسام: 4 تخصصات</span>
-                  <span>الاستجابة: فورية</span>
-                </div>
+                {settings.showHeroStats !== false && (
+                  <div className="pt-1.5 border-t border-white/15 flex items-center justify-between text-[10px] text-teal-200 font-mono">
+                    <span>{departments.length} أقسام تخصصية</span>
+                    <span>{doctors.length} أطباء استشاريين</span>
+                    <span>دعم 24/7</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -321,199 +344,445 @@ export const PatientPortalView: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* 4 Core Clinical Departments Grid */}
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
-              <div>
-                <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-teal-600" />
-                  <span>الأقسام الطبية التخصصية الأربعة</span>
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  منظومة علاجية متكاملة تغطي الجانب الدوائي، النفسي السلوكي، التغذية العصبية، والدعم الاجتماعي
-                </p>
-              </div>
+          {/* Clinical Departments Grid (Controlled by Settings) */}
+          {settings?.showDepartmentsSection !== false && (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                      <Layers className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                      <span>الأقسام والعيادات التخصصية</span>
+                    </h2>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-700">
+                      {departments.length} أقسام
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    منظومة علاجية متكاملة تغطي الجانب الدوائي، النفسي السلوكي، التغذية العصبية، والدعم الاجتماعي
+                  </p>
+                </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={onBookAppointmentClick}
-                  className="px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Calendar className="w-4 h-4" />
-                  <span>حجز استشارة فورية</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
-              {CLINICAL_DEPARTMENTS.map(dept => {
-                const deptDoctor = doctors.find(d => d.departmentId === dept.id) || doctors[0];
-
-                return (
-                  <div
-                    key={dept.id}
-                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 flex flex-col justify-between space-y-4 shadow-2xs hover:shadow-md transition-shadow"
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={onBookAppointmentClick}
+                    className="px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer"
                   >
-                    <div className="space-y-3.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-teal-50 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-                          {dept.badge}
-                        </span>
-                        <div className="flex items-center gap-1 text-xs text-emerald-600 font-semibold">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                          <span>متاح للحجز اليوم</span>
+                    <Calendar className="w-4 h-4" />
+                    <span>حجز استشارة فورية</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+                {departments.map(dept => {
+                  const deptDoctor = doctors.find(d => d.departmentId === dept.id) || doctors[0];
+                  const deptColors = getDepartmentColorStyles(dept.accentColor);
+
+                  return (
+                    <div
+                      key={dept.id}
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 flex flex-col justify-between space-y-4 shadow-2xs hover:shadow-md transition-shadow relative group"
+                    >
+                      <div className="space-y-3.5">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-md border ${deptColors.badgeBg} ${deptColors.badgeText} ${deptColors.badgeBorder}`}>
+                            {dept.badge}
+                          </span>
+                          <div className="flex items-center gap-1 text-xs text-emerald-600 font-semibold">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span>متاح للحجز اليوم</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-3">
+                          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${deptColors.iconBg}`}>
+                            <DepartmentIcon iconName={dept.iconName} className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                              {dept.nameAr}
+                            </h3>
+                            <span className="text-[11px] font-mono text-slate-400 block" dir="ltr">
+                              {dept.nameEn}
+                            </span>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          {dept.fullDesc || dept.shortDesc}
+                        </p>
+
+                        {/* Doctor Spotlight in Department */}
+                        {deptDoctor && (
+                          <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 border border-slate-200/80 dark:border-slate-700/80 flex items-center gap-3">
+                            <img 
+                              src={deptDoctor.avatar} 
+                              alt={deptDoctor.name} 
+                              referrerPolicy="no-referrer"
+                              className="w-12 h-12 rounded-xl object-cover border border-teal-500/30 shrink-0" 
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                                  {deptDoctor.name}
+                                </span>
+                                <span className="text-[11px] font-mono font-bold text-teal-700 dark:text-teal-400">
+                                  {deptDoctor.priceSAR} ر.س
+                                </span>
+                              </div>
+                              <span className="text-[11px] text-slate-500 dark:text-slate-400 block truncate">
+                                {deptDoctor.specialty} · خبرة {deptDoctor.experienceYears} عاماً
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Target Disorders */}
+                        <div className="bg-slate-50/70 dark:bg-slate-800/40 rounded-xl p-3 border border-slate-200/60 dark:border-slate-700/60 text-xs space-y-1.5">
+                          <strong className="block text-slate-900 dark:text-white text-[11px]">
+                            الحالات والاضطرابات التي يعالجها القسم:
+                          </strong>
+                          <div className="flex flex-wrap gap-1.5">
+                            {dept.targetDisorders.map((d, i) => (
+                              <span 
+                                key={i} 
+                                className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-700/70 text-slate-700 dark:text-slate-200 text-[10px] border border-slate-200 dark:border-slate-600 font-medium"
+                              >
+                                {d}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       </div>
 
-                      <div>
-                        <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                          {dept.nameAr}
-                        </h3>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mt-1.5">
-                          {dept.fullDesc}
-                        </p>
-                      </div>
+                      {/* Department Action Buttons */}
+                      <div className="pt-2 flex flex-col sm:flex-row items-center gap-2">
+                        <button
+                          onClick={() => {
+                            if (onBookDepartmentClick) {
+                              onBookDepartmentClick(dept.id);
+                            } else {
+                              onBookAppointmentClick();
+                            }
+                          }}
+                          className="w-full sm:flex-1 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-colors shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Calendar className="w-4 h-4" />
+                          <span>حجز موعد في هذا القسم</span>
+                        </button>
 
-                      {/* Doctor Spotlight in Department */}
-                      <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 border border-slate-200/80 dark:border-slate-700/80 flex items-center gap-3">
-                        <img 
-                          src={deptDoctor.avatar} 
-                          alt={deptDoctor.name} 
+                        {deptDoctor && (
+                          <button
+                            onClick={() => {
+                              setSelectedDoctorId(deptDoctor.id);
+                              setMobileChatView('chat');
+                              handleTabSwitch('messages');
+                            }}
+                            className="w-full sm:w-auto px-3.5 py-2.5 bg-slate-100 hover:bg-teal-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-teal-700 dark:hover:text-teal-300 rounded-xl text-xs font-bold transition-colors border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1.5 cursor-pointer"
+                            title="محادثة طبيب هذا القسم"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                            <span>محادثة الطبيب</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Self-Diagnostic & Crisis Line Banners (Controlled by Settings) */}
+          {(settings?.showSelfDiagnosticBanner !== false || settings?.showEmergencyBanner !== false) && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              
+              {/* Self-Diagnostic Prompt */}
+              {settings?.showSelfDiagnosticBanner !== false && (
+                <div className="bg-gradient-to-r from-indigo-900 via-slate-900 to-teal-950 rounded-2xl p-5 text-white shadow-2xs space-y-3 flex flex-col justify-between">
+                  <div className="space-y-1.5">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[11px] font-bold border border-indigo-400/30">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>الفحص والتشخيص الذاتي المقنن</span>
+                    </span>
+                    <h3 className="font-bold text-sm text-white">
+                      {settings.selfDiagnosticTitle || 'لست متأكداً أي قسم يناسب حالتك؟ ابدأ الفحص في دقيقتين'}
+                    </h3>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      {settings.selfDiagnosticSubtitle || 'أجب عن أسئلة إكلينيكية موجزة وسيقوم النظام بتوجيهك تلقائياً للقسم والأخصائي الأنسب مع حساب مقياس الشدة المعتمد.'}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={onOpenSelfDiagnostic}
+                    className="w-full sm:w-auto px-4 py-2.5 bg-teal-400 hover:bg-teal-300 text-slate-950 rounded-xl text-xs font-black transition-colors shadow-sm flex items-center justify-center gap-1.5 cursor-pointer self-start"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>بدء الفحص التشخيصي الموجه مجاناً</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Emergency & Crisis Support */}
+              {settings?.showEmergencyBanner !== false && (
+                <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 rounded-2xl p-5 text-rose-950 dark:text-rose-100 flex flex-col justify-between space-y-3">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-xs">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>{settings.emergencyBannerTitle || 'الخط الساخن للدعم والتدخل في الأزمات النفسية 24/7'}</span>
+                    </div>
+                    <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                      هل تمر بحالة طارئة أو تشعر بضيق شديد لا يحتمل؟
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      {settings.emergencyBannerSubtitle || 'فريق التدخل النفسي العاجل جاهز لمساندتك على مدار الساعة، خدمة مجانية وسرية تماماً.'}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <a
+                      href={`tel:${settings.emergencyHotline || '920000000'}`}
+                      className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
+                    >
+                      <PhoneCall className="w-4 h-4" />
+                      <span>الاتصال بالخط الساخن ({settings.emergencyHotline || '920000000'})</span>
+                    </a>
+                    <button
+                      onClick={() => {
+                        setSelectedDoctorId('doc-1');
+                        setMobileChatView('chat');
+                        handleTabSwitch('messages');
+                      }}
+                      className="px-3.5 py-2 bg-white dark:bg-slate-800 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 rounded-xl text-xs font-bold hover:bg-rose-100/50 transition-colors cursor-pointer"
+                    >
+                      مراسلة طبيب الطوارئ
+                    </button>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          )}
+
+          {/* Doctors Spotlight Section (Controlled by Settings) */}
+          {settings?.showDoctorsSection !== false && (
+            <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <Stethoscope className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                    <span>الكادر الطبي واستشاريو العيادة</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    نخبة من الاستشاريين والأخصائيين المعتمدين من الهيئة السعودية للتخصصات الصحية
+                  </p>
+                </div>
+                <button
+                  onClick={onBookAppointmentClick}
+                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-teal-950 text-slate-700 dark:text-slate-300 hover:text-teal-700 dark:hover:text-teal-300 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                >
+                  عرض جميع المواعيد المتاحة
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {doctors.slice(0, 4).map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-md transition-all"
+                  >
+                    <div className="space-y-2.5">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={doc.avatar}
+                          alt={doc.name}
                           referrerPolicy="no-referrer"
-                          className="w-12 h-12 rounded-xl object-cover border border-teal-500/30 shrink-0" 
+                          className="w-12 h-12 rounded-xl object-cover border border-teal-500/30"
                         />
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                              {deptDoctor.name}
-                            </span>
-                            <span className="text-[11px] font-mono font-bold text-teal-700 dark:text-teal-400">
-                              {deptDoctor.priceSAR} ر.س
-                            </span>
-                          </div>
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400 block truncate">
-                            {deptDoctor.specialty} · خبرة {deptDoctor.experienceYears} عاماً
+                          <h4 className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                            {doc.name}
+                          </h4>
+                          <span className="text-[11px] text-teal-700 dark:text-teal-400 block truncate font-medium">
+                            {doc.specialty}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block">
+                            خبرة {doc.experienceYears} عاماً · ★ {doc.rating}
                           </span>
                         </div>
                       </div>
-
-                      {/* Target Disorders */}
-                      <div className="bg-slate-50/70 dark:bg-slate-800/40 rounded-xl p-3 border border-slate-200/60 dark:border-slate-700/60 text-xs space-y-1.5">
-                        <strong className="block text-slate-900 dark:text-white text-[11px]">
-                          الحالات والاضطرابات التي يعالجها القسم:
-                        </strong>
-                        <div className="flex flex-wrap gap-1.5">
-                          {dept.targetDisorders.map((d, i) => (
-                            <span 
-                              key={i} 
-                              className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-700/70 text-slate-700 dark:text-slate-200 text-[10px] border border-slate-200 dark:border-slate-600 font-medium"
-                            >
-                              {d}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+                        {doc.bio}
+                      </p>
                     </div>
 
-                    {/* Department Action Buttons */}
-                    <div className="pt-2 flex flex-col sm:flex-row items-center gap-2">
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                      <span className="text-xs font-black font-mono text-slate-900 dark:text-white">
+                        {doc.priceSAR} ر.س
+                      </span>
                       <button
                         onClick={() => {
                           if (onBookDepartmentClick) {
-                            onBookDepartmentClick(dept.id);
+                            onBookDepartmentClick(doc.departmentId);
                           } else {
                             onBookAppointmentClick();
                           }
                         }}
-                        className="w-full sm:flex-1 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-colors shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="px-3 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
                       >
-                        <Calendar className="w-4 h-4" />
-                        <span>حجز موعد في هذا القسم</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setSelectedDoctorId(deptDoctor.id);
-                          setMobileChatView('chat');
-                          handleTabSwitch('messages');
-                        }}
-                        className="w-full sm:w-auto px-3.5 py-2.5 bg-slate-100 hover:bg-teal-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 hover:text-teal-700 dark:hover:text-teal-300 rounded-xl text-xs font-bold transition-colors border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1.5 cursor-pointer"
-                        title="محادثة طبيب هذا القسم"
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                        <span>محادثة الطبيب</span>
+                        حجز موعد
                       </button>
                     </div>
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Self-Diagnostic & Crisis Line Banners */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            
-            {/* Self-Diagnostic Prompt */}
-            <div className="bg-gradient-to-r from-indigo-900 via-slate-900 to-teal-950 rounded-2xl p-5 text-white shadow-2xs space-y-3 flex flex-col justify-between">
-              <div className="space-y-1.5">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[11px] font-bold border border-indigo-400/30">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>الفحص والتشخيص الذاتي المقنن</span>
-                </span>
-                <h3 className="font-bold text-sm text-white">
-                  لست متأكداً أي قسم يناسب حالتك؟ ابدأ الفحص في دقيقتين
+          {/* FAQs Section (Controlled by Settings) */}
+          {settings?.showFaqSection !== false && (
+            <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <Info className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                  <span>الأسئلة الشائعة حول العلاج والاستشارات</span>
                 </h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  أجب عن أسئلة إكلينيكية موجزة وسيقوم النظام بتوجيهك تلقائياً للقسم والأخصائي الأنسب مع حساب مقياس الشدة المعتمد.
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  إجابات واضحة لضمان راحتك وسريتك التامة أثناء رحلتك العلاجية
                 </p>
               </div>
 
-              <button
-                onClick={onOpenSelfDiagnostic}
-                className="w-full sm:w-auto px-4 py-2.5 bg-teal-400 hover:bg-teal-300 text-slate-950 rounded-xl text-xs font-black transition-colors shadow-sm flex items-center justify-center gap-1.5 cursor-pointer self-start"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>بدء الفحص التشخيصي الموجه مجاناً</span>
-              </button>
-            </div>
-
-            {/* Emergency & Crisis Support */}
-            <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 rounded-2xl p-5 text-rose-950 dark:text-rose-100 flex flex-col justify-between space-y-3">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-xs">
-                  <AlertCircle className="w-4 h-4" />
-                  <span>الخط الساخن للدعم والتدخل في الأزمات النفسية 24/7</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
+                  <h4 className="font-bold text-slate-900 dark:text-white">هل الجلسات والاستشارات سرية ومشفرة؟</h4>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[11px]">
+                    نعم، نلتزم بأعلى معايير حماية الخصوصية الطبية HIPAA و GDPR. ملفك ومعلوماتك لا يطّلع عليها سوى طبيبك المعالج فقط.
+                  </p>
                 </div>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                  هل تمر بحالة طارئة أو تشعر بضيق شديد لا يحتمل؟
+
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
+                  <h4 className="font-bold text-slate-900 dark:text-white">كيف يتم عقد الجلسات عن بُعد؟</h4>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[11px]">
+                    تُعقد الجلسات عبر رابط فيديو مباشر وآمن Google Meet يُنشأ تلقائياً فور تأكيد الحجز ويكون متاحاً في لوحتك الشخصية.
+                  </p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
+                  <h4 className="font-bold text-slate-900 dark:text-white">ما هي سياسة إعادة الجدولة والإلغاء؟</h4>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[11px]">
+                    {settings.cancellationPolicyAr || 'يمكنك إلغاء أو إعادة جدولة أي موعد مجاناً بالكامل قبل 4 ساعات من موعد الجلسة المحدد.'}
+                  </p>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-1">
+                  <h4 className="font-bold text-slate-900 dark:text-white">هل يمكن وصف الأدوية النفسية إلكترونياً؟</h4>
+                  <p className="text-slate-600 dark:text-slate-300 leading-relaxed text-[11px]">
+                    نعم، يصدر الاستشاري وصفات طبية إلكترونية معتمدة برقم الترخيص الطبي والجرعات الدقيقة لتقديمها للصيدليات المعتمدة.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Testimonials / Success Stories (Controlled by Settings) */}
+          {settings?.showTestimonialsSection !== false && (
+            <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <Heart className="w-5 h-5 text-rose-500 fill-current" />
+                  <span>تجارب وقصص من رحلة التعافي</span>
                 </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  فريق التدخل النفسي العاجل جاهز لمساندتك على مدار الساعة، خدمة مجانية وسرية تماماً.
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  آراء حقيقية لمرضى استعادوا توازنهم وجودة حياتهم مع الفريق الطبي
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 pt-1">
-                <a
-                  href="tel:920000000"
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors"
-                >
-                  <PhoneCall className="w-4 h-4" />
-                  <span>الاتصال بالخط الساخن (9200)</span>
-                </a>
-                <button
-                  onClick={() => {
-                    setSelectedDoctorId('doc-1');
-                    setMobileChatView('chat');
-                    handleTabSwitch('messages');
-                  }}
-                  className="px-3.5 py-2 bg-white dark:bg-slate-800 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 rounded-xl text-xs font-bold hover:bg-rose-100/50 transition-colors"
-                >
-                  مراسلة طبيب الطوارئ
-                </button>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                  <div className="flex items-center gap-1 text-amber-500 text-xs">★★★★★</div>
+                  <p className="text-slate-600 dark:text-slate-300 italic text-[11px] leading-relaxed">
+                    «التشخيص الدقيق والمتابعة الدوائية غيرت حياتي بعد سنوات من نوبات القلق المستمرة. ممتن جداً لدقة الاستشاري.»
+                  </p>
+                  <span className="text-[10px] text-slate-400 font-bold block">مريض متعافٍ · قسم الطب النفسي</span>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                  <div className="flex items-center gap-1 text-amber-500 text-xs">★★★★★</div>
+                  <p className="text-slate-600 dark:text-slate-300 italic text-[11px] leading-relaxed">
+                    «جلسات العلاج السلوكي المعرفي CBT أعطتني أدوات يومية للتعامل مع الوسواس والضغوط. المنصة سهلة وسريعة.»
+                  </p>
+                  <span className="text-[10px] text-slate-400 font-bold block">مراجعة · قسم العلاج النفسي والسلوكي</span>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2">
+                  <div className="flex items-center gap-1 text-amber-500 text-xs">★★★★★</div>
+                  <p className="text-slate-600 dark:text-slate-300 italic text-[11px] leading-relaxed">
+                    «خطة التغذية العصبية ساعدتني على تنظيم النوم وتقليل الخمول بالتكامل مع أدويتي. تجربة رعاية حقيقية.»
+                  </p>
+                  <span className="text-[10px] text-slate-400 font-bold block">مريض · قسم التغذية العصبية</span>
+                </div>
               </div>
             </div>
+          )}
 
-          </div>
+          {/* Comprehensive Dynamic Footer */}
+          <footer className="pt-6 border-t border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                  {settings.clinicNameAr || 'عيادات CoolMind للطب النفسي والرعاية المتكاملة'}
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xl leading-relaxed">
+                  {settings.footerTextAr || 'المنظومة النفسية الإكلينيكية الرقمية الرائدة في الرعاية التخصصية المتكاملة بالمملكة والشرق الأوسط.'}
+                </p>
+                <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 pt-1">
+                  {settings.clinicAddress && <span>📍 {settings.clinicAddress}</span>}
+                  {settings.workingHoursAr && <span>🕒 {settings.workingHoursAr}</span>}
+                  {settings.emergencyPhone && <span>📞 {settings.emergencyPhone}</span>}
+                </div>
+              </div>
+
+              {settings.showFooterSocials !== false && (
+                <div className="flex items-center gap-2 self-start md:self-auto">
+                  {settings.twitterUrl && (
+                    <a
+                      href={settings.twitterUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-teal-950 text-slate-700 dark:text-slate-300 hover:text-teal-700 rounded-lg text-xs font-bold transition-colors"
+                    >
+                      X / تويتر
+                    </a>
+                  )}
+                  {settings.instagramUrl && (
+                    <a
+                      href={settings.instagramUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-teal-950 text-slate-700 dark:text-slate-300 hover:text-teal-700 rounded-lg text-xs font-bold transition-colors"
+                    >
+                      إنستغرام
+                    </a>
+                  )}
+                  {settings.linkedinUrl && (
+                    <a
+                      href={settings.linkedinUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-teal-950 text-slate-700 dark:text-slate-300 hover:text-teal-700 rounded-lg text-xs font-bold transition-colors"
+                    >
+                      LinkedIn
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="text-center text-[11px] text-slate-400 pb-2">
+              {settings.copyrightTextAr || 'جميع الحقوق محفوظة © CoolMind Clinic'}
+            </div>
+          </footer>
 
         </div>
       )}

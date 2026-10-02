@@ -20,12 +20,14 @@ export interface Patient {
   status: 'نشط' | 'مستقر' | 'قيد المتابعة المكثفة' | 'مكتمل';
 }
 
+export type { Department } from '../data/departments';
+
 export interface Doctor {
   id: string;
   name: string;
   title: string;
-  departmentId: 'psychiatry' | 'psychotherapy' | 'nutrition' | 'social_work';
-  specialty: 'استشاري الطب النفسي' | 'أخصائي أول علاج نفسي' | 'أخصائي تغذية علاجية' | 'أخصائي خدمة اجتماعية ونفسية';
+  departmentId: string;
+  specialty: string;
   licenseNumber: string;
   phone: string;
   email: string;
@@ -40,6 +42,64 @@ export interface Doctor {
   availableDays: string[];
   nextAvailableSlot: string;
   languages: string[];
+  isAvailable?: boolean;
+}
+
+export interface ClinicSettings {
+  // Identity & Contact
+  clinicNameAr: string;
+  clinicNameEn: string;
+  clinicAddress: string;
+  clinicEmail: string;
+  emergencyPhone: string;
+  whatsappPhone: string;
+  workingHoursAr: string;
+  defaultCurrency: 'SAR' | 'USD';
+
+  // Hero Section
+  heroHeadline: string;
+  heroSubtitle: string;
+  heroBadge1: string;
+  heroBadge2: string;
+  heroBadge3: string;
+  heroBadge4: string;
+  showHeroStats: boolean;
+
+  // Announcement Banner
+  showAnnouncementBanner: boolean;
+  announcementText: string;
+  announcementType: 'info' | 'warning' | 'success';
+
+  // Crisis & Emergency Banner
+  showEmergencyBanner: boolean;
+  emergencyBannerTitle: string;
+  emergencyBannerSubtitle: string;
+  emergencyHotline: string;
+
+  // Self-Diagnostic Banner
+  showSelfDiagnosticBanner: boolean;
+  selfDiagnosticTitle: string;
+  selfDiagnosticSubtitle: string;
+
+  // Sections Visibility
+  showDepartmentsSection: boolean;
+  showDoctorsSection: boolean;
+  showFaqSection: boolean;
+  showTestimonialsSection: boolean;
+  showFooterSocials: boolean;
+
+  // Policies & Booking Pricing
+  consultationDiscountPercent: number;
+  enableOnlinePayment: boolean;
+  cancellationPolicyAr: string;
+
+  // Social Links & Footer
+  twitterUrl: string;
+  instagramUrl: string;
+  linkedinUrl: string;
+  youtubeUrl: string;
+  footerTextAr: string;
+  copyrightTextAr: string;
 }
 
 export interface Appointment {

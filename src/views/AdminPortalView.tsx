@@ -17,29 +17,91 @@ import {
   Activity,
   FileText,
   AlertTriangle,
-  Server
+  Server,
+  Layers,
+  Edit3,
+  Trash2,
+  RotateCcw,
+  SlidersHorizontal,
+  Settings
 } from 'lucide-react';
-import { Doctor, Patient, ClinicAnalytics, AuditLog } from '../types';
-import { api } from '../services/api';
+import { Doctor, Patient, ClinicAnalytics, AuditLog, Appointment, TherapyExercise, ClinicSettings } from '../types';
+import { Department, CLINICAL_DEPARTMENTS, getDepartmentColorStyles } from '../data/departments';
+import { DepartmentIcon } from '../components/DepartmentIcon';
+import { AdminSettingsTab } from '../components/admin/AdminSettingsTab';
+import { AdminAppointmentsTab } from '../components/admin/AdminAppointmentsTab';
+import { AdminExercisesTab } from '../components/admin/AdminExercisesTab';
+import { api, INITIAL_SETTINGS } from '../services/api';
+
+export type AdminTabId = 
+  | 'settings' 
+  | 'departments' 
+  | 'doctors' 
+  | 'appointments' 
+  | 'patients' 
+  | 'exercises' 
+  | 'kpis' 
+  | 'audit_logs' 
+  | 'api_explorer';
 
 interface Props {
   analytics: ClinicAnalytics;
   doctors: Doctor[];
   patients: Patient[];
+  departments?: Department[];
+  appointments?: Appointment[];
+  exercises?: TherapyExercise[];
+  settings?: ClinicSettings;
   auditLogs: AuditLog[];
   onAddNewDoctor: (doctor: Omit<Doctor, 'id'>) => void;
+  onUpdateDoctor?: (id: string, updated: Partial<Doctor>) => Promise<void>;
+  onDeleteDoctor?: (id: string) => Promise<void>;
   onAddNewPatient: (patient: Omit<Patient, 'id'>) => void;
+  onUpdatePatient?: (id: string, updated: Partial<Patient>) => Promise<void>;
+  onDeletePatient?: (id: string) => Promise<void>;
+  onUpdateAppointment?: (id: string, updated: Partial<Appointment>) => Promise<void>;
+  onDeleteAppointment?: (id: string) => Promise<void>;
+  onUpdateSettings?: (settings: Partial<ClinicSettings>) => Promise<void>;
+  onResetSettings?: () => Promise<void>;
+  onAddExercise?: (ex: Omit<TherapyExercise, 'id'>) => Promise<void>;
+  onUpdateExercise?: (id: string, updated: Partial<TherapyExercise>) => Promise<void>;
+  onDeleteExercise?: (id: string) => Promise<void>;
+  onCreateDepartment?: (dept: Omit<Department, 'id'> & { id?: string }) => Promise<void>;
+  onUpdateDepartment?: (id: string, updated: Partial<Department>) => Promise<void>;
+  onDeleteDepartment?: (id: string) => Promise<void>;
+  onResetDepartments?: () => Promise<void>;
+  onOpenDepartmentManagerModal?: (dept?: Department) => void;
 }
 
 export const AdminPortalView: React.FC<Props> = ({
   analytics,
   doctors,
   patients,
+  departments = CLINICAL_DEPARTMENTS,
+  appointments = [],
+  exercises = [],
+  settings = INITIAL_SETTINGS,
   auditLogs,
   onAddNewDoctor,
+  onUpdateDoctor,
+  onDeleteDoctor,
   onAddNewPatient,
+  onUpdatePatient,
+  onDeletePatient,
+  onUpdateAppointment,
+  onDeleteAppointment,
+  onUpdateSettings,
+  onResetSettings,
+  onAddExercise,
+  onUpdateExercise,
+  onDeleteExercise,
+  onCreateDepartment,
+  onUpdateDepartment,
+  onDeleteDepartment,
+  onResetDepartments,
+  onOpenDepartmentManagerModal,
 }) => {
-  const [activeTab, setActiveTab] = useState<'kpis' | 'doctors' | 'patients' | 'api_explorer' | 'audit_logs'>('kpis');
+  const [activeTab, setActiveTab] = useState<AdminTabId>('settings');
   
   // API Explorer state
   const [selectedEndpoint, setSelectedEndpoint] = useState<string>('GET /api/v1/patients');
@@ -50,9 +112,18 @@ export const AdminPortalView: React.FC<Props> = ({
   const [showAddDocModal, setShowAddDocModal] = useState<boolean>(false);
   const [newDocName, setNewDocName] = useState<string>('');
   const [newDocTitle, setNewDocTitle] = useState<string>('استشاري الطب النفسي والعصبي');
-  const [newDocSpecialty, setNewDocSpecialty] = useState<Doctor['specialty']>('استشاري الطب النفسي');
+  const [newDocDepartmentId, setNewDocDepartmentId] = useState<string>(departments[0]?.id || 'psychiatry');
+  const [newDocSpecialty, setNewDocSpecialty] = useState<string>('استشاري الطب النفسي');
   const [newDocLicense, setNewDocLicense] = useState<string>('MD-PSY-' + Math.floor(10000 + Math.random() * 90000));
   const [newDocPhone, setNewDocPhone] = useState<string>('050' + Math.floor(1000000 + Math.random() * 9000000));
+  
+  // Local department search & delete state in Admin
+  const [deptSearchQuery, setDeptSearchQuery] = useState<string>('');
+  const [deptToDelete, setDeptToDelete] = useState<Department | null>(null);
+
+  // Doctor edit and delete states
+  const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
+  const [doctorToDelete, setDoctorToDelete] = useState<Doctor | null>(null);
 
   // New Patient form state
   const [showAddPatientModal, setShowAddPatientModal] = useState<boolean>(false);
@@ -62,6 +133,10 @@ export const AdminPortalView: React.FC<Props> = ({
   const [newPatDiagnosis, setNewPatDiagnosis] = useState<string>('اضطراب القلق العام وتوترات التكيف');
   const [newPatRisk, setNewPatRisk] = useState<Patient['riskLevel']>('منخفض');
   const [newPatDoctor, setNewPatDoctor] = useState<string>(doctors[0]?.name || 'د. طارق الحكيم');
+
+  // Patient edit and delete states
+  const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
 
   // Run simulated API request
   const handleTestEndpoint = async (endpoint: string) => {
@@ -93,9 +168,11 @@ export const AdminPortalView: React.FC<Props> = ({
     e.preventDefault();
     if (!newDocName.trim()) return;
 
-    const deptId = newDocSpecialty === 'استشاري الطب النفسي' ? 'psychiatry' :
-                   newDocSpecialty === 'أخصائي أول علاج نفسي' ? 'psychotherapy' :
-                   newDocSpecialty === 'أخصائي تغذية علاجية' ? 'nutrition' : 'social_work';
+    const deptId = newDocDepartmentId || (
+      newDocSpecialty === 'استشاري الطب النفسي' ? 'psychiatry' :
+      newDocSpecialty === 'أخصائي أول علاج نفسي' ? 'psychotherapy' :
+      newDocSpecialty === 'أخصائي تغذية علاجية' ? 'nutrition' : 'social_work'
+    );
 
     onAddNewDoctor({
       name: newDocName,
@@ -178,11 +255,15 @@ export const AdminPortalView: React.FC<Props> = ({
       {/* Admin Navigation Tabs */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-1.5 flex items-center gap-1 overflow-x-auto shadow-2xs">
         {[
-          { id: 'kpis', label: 'المؤشرات العامة (KPIs)', icon: TrendingUp },
+          { id: 'settings', label: 'إعدادات الموقع والمنصة', icon: Settings },
+          { id: 'departments', label: 'إدارة الأقسام الطبية', icon: Layers },
           { id: 'doctors', label: 'إدارة الأطباء والكادر', icon: Stethoscope },
-          { id: 'patients', label: 'سجل المرضى والحسابات', icon: Users },
-          { id: 'api_explorer', label: 'مستكشف الـ API وقاعدة البيانات', icon: Terminal },
+          { id: 'appointments', label: 'إدارة المواعيد والحجوزات', icon: Calendar },
+          { id: 'patients', label: 'سجل وحسابات المرضى', icon: Users },
+          { id: 'exercises', label: 'التمارين والمهام السلوكية', icon: Activity },
+          { id: 'kpis', label: 'المؤشرات العامة (KPIs)', icon: TrendingUp },
           { id: 'audit_logs', label: 'سجلات التدقيق والأمان (HIPAA)', icon: ShieldCheck },
+          { id: 'api_explorer', label: 'مستكشف الـ API وقاعدة البيانات', icon: Terminal },
         ].map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -190,7 +271,7 @@ export const AdminPortalView: React.FC<Props> = ({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                 isActive
                   ? 'bg-slate-900 text-white shadow-2xs dark:bg-teal-700'
                   : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -202,6 +283,52 @@ export const AdminPortalView: React.FC<Props> = ({
           );
         })}
       </div>
+
+      {/* TAB: SITE & PLATFORM SETTINGS */}
+      {activeTab === 'settings' && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xs space-y-4">
+          <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+            <h2 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+              <Settings className="w-4 h-4 text-teal-600" />
+              <span>التحكم في إعدادات المنصة وهوية الصفحة الرئيسية</span>
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">
+              تعديل أسماء العيادة، العناوين الترحيبية، أرقام الطوارئ، وتفعيل شريط الإعلانات العاجلة في أعلى الموقع
+            </p>
+          </div>
+
+          <AdminSettingsTab
+            settings={settings}
+            onUpdateSettings={onUpdateSettings || (async () => {})}
+            onResetSettings={onResetSettings || (async () => {})}
+          />
+        </div>
+      )}
+
+      {/* TAB: APPOINTMENTS MANAGEMENT */}
+      {activeTab === 'appointments' && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xs">
+          <AdminAppointmentsTab
+            appointments={appointments}
+            doctors={doctors}
+            patients={patients}
+            onUpdateAppointment={onUpdateAppointment || (async () => {})}
+            onDeleteAppointment={onDeleteAppointment || (async () => {})}
+          />
+        </div>
+      )}
+
+      {/* TAB: EXERCISES MANAGEMENT */}
+      {activeTab === 'exercises' && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xs">
+          <AdminExercisesTab
+            exercises={exercises}
+            onAddExercise={onAddExercise || (async () => {})}
+            onUpdateExercise={onUpdateExercise || (async () => {})}
+            onDeleteExercise={onDeleteExercise || (async () => {})}
+          />
+        </div>
+      )}
 
       {/* TAB 1: KPIS & CLINIC PERFORMANCE */}
       {activeTab === 'kpis' && (
@@ -271,6 +398,234 @@ export const AdminPortalView: React.FC<Props> = ({
         </div>
       )}
 
+      {/* TAB: DEPARTMENTS MANAGEMENT */}
+      {activeTab === 'departments' && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xs space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white">
+                  إدارة الأقسام والعيادات الطبية التخصصية
+                </h2>
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300">
+                  {departments.length} أقسام معتمدة
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                التحكم الكامل في الأقسام الطبية المعروضة في الصفحة الرئيسية: إضافة عيادات جديدة، تعديل الاضطرابات، أو حذف الأقسام
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {onResetDepartments && (
+                <button
+                  onClick={async () => {
+                    if (confirm('هل ترغب في استعادة الأقسام الطبية الافتراضية الأربعة الأصلية؟')) {
+                      await onResetDepartments();
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-xl border border-slate-200 dark:border-slate-800 transition-colors cursor-pointer"
+                  title="استعادة الأقسام الأصلية"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>استعادة الافتراضي</span>
+                </button>
+              )}
+              <button
+                onClick={() => onOpenDepartmentManagerModal ? onOpenDepartmentManagerModal() : null}
+                className="flex items-center gap-1.5 px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+              >
+                <Plus className="w-4 h-4" />
+                <span>إضافة قسم جديد</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Department KPIs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+              <span className="text-[11px] text-slate-400 block font-medium">الأقسام الفعالة</span>
+              <span className="text-xl font-black text-slate-900 dark:text-white mt-1 block">{departments.length}</span>
+              <span className="text-[10px] text-emerald-600 font-semibold block mt-0.5">معروضة في الرئيسية ونظام الحجز</span>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+              <span className="text-[11px] text-slate-400 block font-medium">الأطباء الموزعين</span>
+              <span className="text-xl font-black text-teal-600 dark:text-teal-400 mt-1 block">{doctors.length} ممارساً</span>
+              <span className="text-[10px] text-slate-400 block mt-0.5">مرتبطين بالعيادات التخصصية</span>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+              <span className="text-[11px] text-slate-400 block font-medium">الاضطرابات والحالات المغطاة</span>
+              <span className="text-xl font-black text-indigo-600 dark:text-indigo-400 mt-1 block">
+                {departments.reduce((acc, d) => acc + (d.targetDisorders?.length || 0), 0)}
+              </span>
+              <span className="text-[10px] text-slate-400 block mt-0.5">تشخيصات إكلينيكية مدرجة</span>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+              <span className="text-[11px] text-slate-400 block font-medium">البروتوكولات العلاجية</span>
+              <span className="text-xl font-black text-amber-600 dark:text-amber-400 mt-1 block">
+                {departments.reduce((acc, d) => acc + (d.recommendedTreatments?.length || 0), 0)}
+              </span>
+              <span className="text-[10px] text-slate-400 block mt-0.5">طرق وتدخلات دوائية وسلوكية</span>
+            </div>
+          </div>
+
+          {/* Department Search */}
+          <div className="relative max-w-md">
+            <Search className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={deptSearchQuery}
+              onChange={(e) => setDeptSearchQuery(e.target.value)}
+              placeholder="ابحث عن قسم في لوحة الإدارة بالاسم أو الوصف..."
+              className="w-full pr-9 pl-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+
+          {/* Department Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {departments
+              .filter(d => {
+                if (!deptSearchQuery.trim()) return true;
+                const q = deptSearchQuery.toLowerCase();
+                return d.nameAr.toLowerCase().includes(q) || d.nameEn.toLowerCase().includes(q) || d.badge.toLowerCase().includes(q);
+              })
+              .map(dept => {
+                const assignedDocs = doctors.filter(d => d.departmentId === dept.id);
+                const colors = getDepartmentColorStyles(dept.accentColor);
+
+                return (
+                  <div
+                    key={dept.id}
+                    className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 flex flex-col justify-between space-y-4 shadow-2xs hover:shadow-md transition-shadow"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${colors.iconBg}`}>
+                            <DepartmentIcon iconName={dept.iconName} className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+                              {dept.nameAr}
+                            </h3>
+                            <span className="text-[11px] font-mono text-slate-400 block" dir="ltr">
+                              {dept.nameEn}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => onOpenDepartmentManagerModal ? onOpenDepartmentManagerModal(dept) : null}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-950/60 dark:text-slate-400 dark:hover:text-teal-300 transition-colors cursor-pointer"
+                            title="تعديل القسم"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          {onDeleteDepartment && (
+                            <button
+                              onClick={() => setDeptToDelete(dept)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                              title="حذف القسم"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center flex-wrap gap-2 text-xs">
+                        <span className={`px-2.5 py-0.5 rounded-md font-bold text-[11px] border ${colors.badgeBg} ${colors.badgeText} ${colors.badgeBorder}`}>
+                          {dept.badge}
+                        </span>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                          {assignedDocs.length} أطباء مسجلين
+                        </span>
+                        <span className="text-[11px] font-mono text-slate-400">
+                          ID: {dept.id}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        {dept.fullDesc || dept.shortDesc}
+                      </p>
+
+                      <div className="bg-slate-50 dark:bg-slate-900/60 rounded-xl p-3 border border-slate-200/70 dark:border-slate-800 text-xs space-y-1.5">
+                        <strong className="block text-slate-800 dark:text-slate-200 text-[11px]">
+                          الاضطرابات المستهدفة ({dept.targetDisorders.length}):
+                        </strong>
+                        <div className="flex flex-wrap gap-1">
+                          {dept.targetDisorders.map((disorder, idx) => (
+                            <span 
+                              key={idx}
+                              className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 text-[10px] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-medium"
+                            >
+                              {disorder}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs">
+                      <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>معروض ونشط في الرئيسية</span>
+                      </span>
+
+                      <button
+                        onClick={() => onOpenDepartmentManagerModal ? onOpenDepartmentManagerModal(dept) : null}
+                        className="text-xs font-bold text-teal-700 dark:text-teal-400 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>تعديل التفاصيل</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+
+          {/* Delete confirmation dialog inside Admin */}
+          {deptToDelete && (
+            <div className="fixed inset-0 z-60 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 text-right border border-rose-200 dark:border-rose-900/50 shadow-2xl space-y-4">
+                <div className="w-12 h-12 rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    تأكيد حذف قسم "{deptToDelete.nameAr}"
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    سيتم إزالة هذا القسم فوراً من الصفحة الرئيسية ولوحة الأقسام ولن يظهر في خيارات الحجز.
+                  </p>
+                </div>
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    onClick={() => setDeptToDelete(null)}
+                    className="px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (onDeleteDepartment) {
+                        await onDeleteDepartment(deptToDelete.id);
+                        setDeptToDelete(null);
+                      }
+                    }}
+                    className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs"
+                  >
+                    تأكيد الحذف نهائياً
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* TAB 2: DOCTORS MANAGEMENT */}
       {activeTab === 'doctors' && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xs space-y-4">
@@ -290,25 +645,59 @@ export const AdminPortalView: React.FC<Props> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {doctors.map(doc => (
-              <div key={doc.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-sm text-slate-900 dark:text-white">{doc.name}</h3>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-950 text-teal-800 dark:text-teal-300 font-semibold border border-teal-200 dark:border-teal-800">
-                      {doc.specialty}
-                    </span>
+              <div key={doc.id} className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex flex-col justify-between gap-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-sm text-slate-900 dark:text-white">{doc.name}</h3>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-950 text-teal-800 dark:text-teal-300 font-semibold border border-teal-200 dark:border-teal-800">
+                        {doc.specialty}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500">{doc.title}</p>
+                    <div className="text-[11px] text-slate-400 font-mono pt-1">
+                      ترخيص: {doc.licenseNumber} · {doc.experienceYears} سنوات خبرة · {doc.priceSAR} ر.س
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-500">{doc.title}</p>
-                  <div className="text-[11px] text-slate-400 font-mono pt-1">
-                    ترخيص: {doc.licenseNumber} · {doc.experienceYears} سنوات خبرة · {doc.activePatientsCount} مرضى نشطين
-                  </div>
-                  <div className="text-[11px] text-teal-800 dark:text-teal-300 font-semibold pt-1">
-                    أيام التواجد: {doc.availableDays.join(' · ')}
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setEditingDoctor(doc)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/60 transition-colors"
+                      title="تعديل بيانات الطبيب"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setDoctorToDelete(doc)}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors"
+                      title="حذف الطبيب"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
 
-                <div className="text-left font-mono font-bold text-amber-600 text-xs">
-                  ★ {doc.rating}
+                <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-xs">
+                  <button
+                    onClick={async () => {
+                      if (onUpdateDoctor) {
+                        await onUpdateDoctor(doc.id, { isAvailable: doc.isAvailable === false ? true : false });
+                      }
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
+                      doc.isAvailable !== false
+                        ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                        : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${doc.isAvailable !== false ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
+                    <span>{doc.isAvailable !== false ? 'متاح للحجز الفوري' : 'في إجازة / غير متاح'}</span>
+                  </button>
+
+                  <span className="font-mono font-bold text-amber-600 text-xs">
+                    ★ {doc.rating} ({doc.reviewsCount})
+                  </span>
                 </div>
               </div>
             ))}
@@ -332,7 +721,19 @@ export const AdminPortalView: React.FC<Props> = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">التخصص:</label>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">القسم الطبي التابع له:</label>
+                    <select
+                      value={newDocDepartmentId}
+                      onChange={(e) => setNewDocDepartmentId(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    >
+                      {departments.map(dept => (
+                        <option key={dept.id} value={dept.id}>{dept.nameAr} ({dept.badge})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">المسمى والتخصص الوظيفي:</label>
                     <select
                       value={newDocSpecialty}
                       onChange={(e) => setNewDocSpecialty(e.target.value as any)}
@@ -372,10 +773,133 @@ export const AdminPortalView: React.FC<Props> = ({
               </div>
             </div>
           )}
+
+          {/* Modal for editing doctor */}
+          {editingDoctor && (
+            <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-5 space-y-4 border border-slate-200 dark:border-slate-800 text-right">
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white">تعديل بيانات الطبيب: {editingDoctor.name}</h3>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (onUpdateDoctor) {
+                      await onUpdateDoctor(editingDoctor.id, editingDoctor);
+                      setEditingDoctor(null);
+                    }
+                  }}
+                  className="space-y-3 text-xs"
+                >
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">الاسم:</label>
+                    <input
+                      type="text"
+                      value={editingDoctor.name}
+                      onChange={(e) => setEditingDoctor({ ...editingDoctor, name: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">القسم الطبي:</label>
+                    <select
+                      value={editingDoctor.departmentId}
+                      onChange={(e) => setEditingDoctor({ ...editingDoctor, departmentId: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    >
+                      {departments.map(dept => (
+                        <option key={dept.id} value={dept.id}>{dept.nameAr}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">السعر (ر.س):</label>
+                      <input
+                        type="number"
+                        value={editingDoctor.priceSAR}
+                        onChange={(e) => setEditingDoctor({ ...editingDoctor, priceSAR: Number(e.target.value) })}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">سنوات الخبرة:</label>
+                      <input
+                        type="number"
+                        value={editingDoctor.experienceYears}
+                        onChange={(e) => setEditingDoctor({ ...editingDoctor, experienceYears: Number(e.target.value) })}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">نبذة الطبيب:</label>
+                    <textarea
+                      rows={2}
+                      value={editingDoctor.bio}
+                      onChange={(e) => setEditingDoctor({ ...editingDoctor, bio: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingDoctor(null)}
+                      className="px-4 py-2 rounded-xl text-slate-500 hover:text-slate-700"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 bg-teal-700 text-white rounded-xl font-bold hover:bg-teal-800"
+                    >
+                      حفظ التعديلات
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Doctor Modal */}
+          {doctorToDelete && (
+            <div className="fixed inset-0 z-60 bg-slate-900/80 flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-5 text-right space-y-4">
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                  تأكيد حذف الطبيب
+                </h3>
+                <p className="text-xs text-slate-500">
+                  هل أنت متأكد من حذف الطبيب {doctorToDelete.name}؟ لن يظهر الطبيب في قائمة الأطباء أو حجز المواعيد.
+                </p>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    onClick={() => setDoctorToDelete(null)}
+                    className="px-3 py-1.5 text-xs text-slate-600"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (onDeleteDoctor) {
+                        await onDeleteDoctor(doctorToDelete.id);
+                        setDoctorToDelete(null);
+                      }
+                    }}
+                    className="px-4 py-1.5 bg-rose-600 text-white rounded-xl text-xs font-bold"
+                  >
+                    تأكيد الحذف
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* TAB 3: PATIENTS MASTER DIRECTORY */}
+      {/* TAB: PATIENTS MASTER DIRECTORY */}
       {activeTab === 'patients' && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
@@ -499,6 +1023,7 @@ export const AdminPortalView: React.FC<Props> = ({
                   <th className="p-3">مستوى الخطر</th>
                   <th className="p-3">الطبيب المعالج</th>
                   <th className="p-3">الحالة</th>
+                  <th className="p-3 text-center">الإجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -518,11 +1043,141 @@ export const AdminPortalView: React.FC<Props> = ({
                     </td>
                     <td className="p-3 text-slate-600 dark:text-slate-300">{p.assignedDoctor}</td>
                     <td className="p-3 text-slate-500">{p.status}</td>
+                    <td className="p-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => setEditingPatient(p)}
+                          className="p-1 rounded-md text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/50"
+                          title="تعديل ملف المريض"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setPatientToDelete(p)}
+                          className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50"
+                          title="حذف ملف المريض"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
+          {/* Edit Patient Modal */}
+          {editingPatient && (
+            <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-5 space-y-4 border border-slate-200 dark:border-slate-800 text-right text-xs">
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white">تعديل ملف المريض: {editingPatient.name}</h3>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (onUpdatePatient) {
+                      await onUpdatePatient(editingPatient.id, editingPatient);
+                      setEditingPatient(null);
+                    }
+                  }}
+                  className="space-y-3"
+                >
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">الاسم:</label>
+                    <input
+                      type="text"
+                      value={editingPatient.name}
+                      onChange={(e) => setEditingPatient({ ...editingPatient, name: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">التشخيص الأساسي:</label>
+                    <input
+                      type="text"
+                      value={editingPatient.primaryDiagnosis}
+                      onChange={(e) => setEditingPatient({ ...editingPatient, primaryDiagnosis: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">مستوى الخطورة:</label>
+                      <select
+                        value={editingPatient.riskLevel}
+                        onChange={(e) => setEditingPatient({ ...editingPatient, riskLevel: e.target.value as any })}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      >
+                        <option value="منخفض">منخفض</option>
+                        <option value="متوسط">متوسط</option>
+                        <option value="حرج">حرج</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1">حالة الملف:</label>
+                      <select
+                        value={editingPatient.status}
+                        onChange={(e) => setEditingPatient({ ...editingPatient, status: e.target.value as any })}
+                        className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                      >
+                        <option value="نشط">نشط</option>
+                        <option value="مستقر">مستقر</option>
+                        <option value="قيد المتابعة المكثفة">قيد المتابعة المكثفة</option>
+                        <option value="مكتمل">مكتمل</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingPatient(null)}
+                      className="px-4 py-2 rounded-xl text-slate-500 hover:text-slate-700"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 bg-teal-700 text-white rounded-xl font-bold hover:bg-teal-800"
+                    >
+                      حفظ التعديلات
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Patient Modal */}
+          {patientToDelete && (
+            <div className="fixed inset-0 z-60 bg-slate-900/80 flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-5 text-right space-y-4">
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white">تأكيد حذف ملف المريض</h3>
+                <p className="text-xs text-slate-500">
+                  هل أنت متأكد من حذف ملف المريض {patientToDelete.name} ({patientToDelete.fileNumber}) نهائياً؟
+                </p>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    onClick={() => setPatientToDelete(null)}
+                    className="px-3 py-1.5 text-xs text-slate-600"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (onDeletePatient) {
+                        await onDeletePatient(patientToDelete.id);
+                        setPatientToDelete(null);
+                      }
+                    }}
+                    className="px-4 py-1.5 bg-rose-600 text-white rounded-xl text-xs font-bold"
+                  >
+                    تأكيد الحذف
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

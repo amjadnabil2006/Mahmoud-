@@ -9,10 +9,69 @@ import {
   ClinicAnalytics,
   TherapyExercise,
   BookingTransaction,
-  AppNotification
+  AppNotification,
+  ClinicSettings
 } from '../types';
 
 import { INITIAL_PATIENTS, INITIAL_ASSESSMENT_RESULTS, INITIAL_PRESCRIPTIONS } from '../data/mockPatients';
+import { Department, CLINICAL_DEPARTMENTS } from '../data/departments';
+
+export const INITIAL_SETTINGS: ClinicSettings = {
+  // Identity & Contact
+  clinicNameAr: 'عيادات CoolMind للطب النفسي والرعاية المتكاملة',
+  clinicNameEn: 'CoolMind Psychiatric & Integrative Clinic',
+  clinicAddress: 'المملكة العربية السعودية، الرياض، طريق الملك فهد - برج الرعاية الطبية',
+  clinicEmail: 'care@coolmind.clinic',
+  emergencyPhone: '920000000',
+  whatsappPhone: '+966500000000',
+  workingHoursAr: 'يومياً من 08:00 ص حتى 11:00 م (جلسات حضورية وعن بعد)',
+  defaultCurrency: 'SAR',
+
+  // Hero Section
+  heroHeadline: 'الرعاية النفسية المتكاملة.. تشخيص طبي، علاج معرفي، وتغذية متخصصة',
+  heroSubtitle: 'نخبة من الاستشاريين المرخصين في الطب النفسي، العلاج السلوكي المعرفي CBT، التغذية العصبية، والخدمة الاجتماعية في بيئة آمنة وسرية تماماً.',
+  heroBadge1: 'أطباء واستشاريون مرخصون',
+  heroBadge2: 'سرية طبية مشفرة HIPAA',
+  heroBadge3: 'حجز فوري ومواعيد مرنة',
+  heroBadge4: 'استشارات حضورية وأونلاين',
+  showHeroStats: true,
+
+  // Announcement Banner
+  showAnnouncementBanner: true,
+  announcementText: '🌟 عياداتنا معتمدة من الهيئة السعودية للتخصصات الصحية ومتوافقة مع معايير الأمان الطبي HIPAA و GDPR.',
+  announcementType: 'info',
+
+  // Crisis & Emergency Banner
+  showEmergencyBanner: true,
+  emergencyBannerTitle: 'خط الدعم والمساعدة النفسية والاستشارات الفورية 24/7',
+  emergencyBannerSubtitle: 'فريق طوارئ وتدخل نفسي سريع متاح على مدار الساعة للحالات الحرجة ونوبات الهلع',
+  emergencyHotline: '920000000',
+
+  // Self-Diagnostic Banner
+  showSelfDiagnosticBanner: true,
+  selfDiagnosticTitle: 'اختبارات ومقاييس التقييم الذاتي المعتمدة سريرياً',
+  selfDiagnosticSubtitle: 'اكتشف مستوى القلق، الاكتئاب، أو اضطراب النوم بمقاييس علمية دقيقة ونتائج فورية مجاناً',
+
+  // Sections Visibility
+  showDepartmentsSection: true,
+  showDoctorsSection: true,
+  showFaqSection: true,
+  showTestimonialsSection: true,
+  showFooterSocials: true,
+
+  // Policies & Booking Pricing
+  consultationDiscountPercent: 10,
+  enableOnlinePayment: true,
+  cancellationPolicyAr: 'إمكانية الإلغاء أو إعادة الجدولة مجاناً قبل 4 ساعات من موعد الجلسة',
+
+  // Social Links & Footer
+  twitterUrl: 'https://twitter.com/coolmind_clinic',
+  instagramUrl: 'https://instagram.com/coolmind_clinic',
+  linkedinUrl: 'https://linkedin.com/company/coolmind-clinic',
+  youtubeUrl: 'https://youtube.com/@coolmind_clinic',
+  footerTextAr: 'المنظومة النفسية الإكلينيكية الرقمية الرائدة في الرعاية التخصصية المتكاملة بالمملكة والشرق الأوسط.',
+  copyrightTextAr: 'جميع الحقوق محفوظة © CoolMind Clinic'
+};
 
 export const INITIAL_DOCTORS: Doctor[] = [
   {
@@ -464,6 +523,35 @@ export const api = {
       all.unshift(newPatient);
       setStorage('patients', all);
       return newPatient;
+    },
+    update: async (id: string, updatedData: Partial<Patient>): Promise<Patient> => {
+      const all = getStorage('patients', INITIAL_PATIENTS);
+      const idx = all.findIndex(p => p.id === id);
+      if (idx === -1) throw new Error('Patient not found');
+      const updated = { ...all[idx], ...updatedData, id };
+      all[idx] = updated;
+      setStorage('patients', all);
+      return updated;
+    },
+    delete: async (id: string): Promise<void> => {
+      const all = getStorage('patients', INITIAL_PATIENTS);
+      setStorage('patients', all.filter(p => p.id !== id));
+    }
+  },
+
+  settings: {
+    get: async (): Promise<ClinicSettings> => {
+      return getStorage('clinic_settings', INITIAL_SETTINGS);
+    },
+    update: async (newSettings: Partial<ClinicSettings>): Promise<ClinicSettings> => {
+      const current = getStorage('clinic_settings', INITIAL_SETTINGS);
+      const updated = { ...current, ...newSettings };
+      setStorage('clinic_settings', updated);
+      return updated;
+    },
+    reset: async (): Promise<ClinicSettings> => {
+      setStorage('clinic_settings', INITIAL_SETTINGS);
+      return INITIAL_SETTINGS;
     }
   },
 
@@ -487,6 +575,68 @@ export const api = {
       all.unshift(newDoc);
       setStorage('doctors', all);
       return newDoc;
+    },
+    update: async (id: string, updatedData: Partial<Doctor>): Promise<Doctor> => {
+      const all = getStorage('doctors', INITIAL_DOCTORS);
+      const idx = all.findIndex(d => d.id === id);
+      if (idx === -1) throw new Error('Doctor not found');
+      const updated = { ...all[idx], ...updatedData, id };
+      all[idx] = updated;
+      setStorage('doctors', all);
+      return updated;
+    },
+    delete: async (id: string): Promise<void> => {
+      const all = getStorage('doctors', INITIAL_DOCTORS);
+      setStorage('doctors', all.filter(d => d.id !== id));
+    }
+  },
+
+  departments: {
+    getAll: async (): Promise<Department[]> => {
+      return getStorage('departments', CLINICAL_DEPARTMENTS);
+    },
+    saveAll: async (data: Department[]): Promise<void> => {
+      setStorage('departments', data);
+    },
+    create: async (dept: Omit<Department, 'id'> & { id?: string }): Promise<Department> => {
+      const all = getStorage('departments', CLINICAL_DEPARTMENTS);
+      const generatedSlug = (dept.nameEn || 'dept')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '') || 'dept';
+      
+      let candidateId = dept.id?.trim() || generatedSlug;
+      if (all.some(d => d.id === candidateId)) {
+        candidateId = `${candidateId}_${Date.now().toString(36)}`;
+      }
+
+      const newDept: Department = {
+        ...dept,
+        id: candidateId,
+        doctorCount: dept.doctorCount || 0
+      };
+      all.push(newDept);
+      setStorage('departments', all);
+      return newDept;
+    },
+    update: async (id: string, updated: Partial<Department>): Promise<Department> => {
+      const all = getStorage('departments', CLINICAL_DEPARTMENTS);
+      const index = all.findIndex(d => d.id === id);
+      if (index === -1) throw new Error('Department not found');
+      const updatedDept: Department = { ...all[index], ...updated, id };
+      all[index] = updatedDept;
+      setStorage('departments', all);
+      return updatedDept;
+    },
+    delete: async (id: string): Promise<void> => {
+      const all = getStorage('departments', CLINICAL_DEPARTMENTS);
+      const filtered = all.filter(d => d.id !== id);
+      setStorage('departments', filtered);
+    },
+    resetToDefault: async (): Promise<Department[]> => {
+      setStorage('departments', CLINICAL_DEPARTMENTS);
+      return CLINICAL_DEPARTMENTS;
     }
   },
 
@@ -509,6 +659,19 @@ export const api = {
       const all = getStorage('appointments', INITIAL_APPOINTMENTS);
       const updated = all.map(a => a.id === id ? { ...a, status } : a);
       setStorage('appointments', updated);
+    },
+    update: async (id: string, updatedData: Partial<Appointment>): Promise<Appointment> => {
+      const all = getStorage('appointments', INITIAL_APPOINTMENTS);
+      const idx = all.findIndex(a => a.id === id);
+      if (idx === -1) throw new Error('Appointment not found');
+      const updated = { ...all[idx], ...updatedData, id };
+      all[idx] = updated;
+      setStorage('appointments', all);
+      return updated;
+    },
+    delete: async (id: string): Promise<void> => {
+      const all = getStorage('appointments', INITIAL_APPOINTMENTS);
+      setStorage('appointments', all.filter(a => a.id !== id));
     }
   },
 
@@ -521,6 +684,10 @@ export const api = {
       all.unshift(rx);
       setStorage('prescriptions', all);
       return rx;
+    },
+    delete: async (id: string): Promise<void> => {
+      const all = getStorage('prescriptions', INITIAL_PRESCRIPTIONS);
+      setStorage('prescriptions', all.filter(rx => rx.id !== id));
     }
   },
 
@@ -582,6 +749,29 @@ export const api = {
       const updated = all.map(e => e.id === id ? { ...e, isCompletedToday: !e.isCompletedToday } : e);
       setStorage('exercises', updated);
       return updated;
+    },
+    create: async (exercise: Omit<TherapyExercise, 'id'>): Promise<TherapyExercise> => {
+      const all = getStorage('exercises', INITIAL_EXERCISES);
+      const newEx: TherapyExercise = {
+        ...exercise,
+        id: generateUniqueId('ex')
+      };
+      all.push(newEx);
+      setStorage('exercises', all);
+      return newEx;
+    },
+    update: async (id: string, updatedData: Partial<TherapyExercise>): Promise<TherapyExercise> => {
+      const all = getStorage('exercises', INITIAL_EXERCISES);
+      const idx = all.findIndex(e => e.id === id);
+      if (idx === -1) throw new Error('Exercise not found');
+      const updated = { ...all[idx], ...updatedData, id };
+      all[idx] = updated;
+      setStorage('exercises', all);
+      return updated;
+    },
+    delete: async (id: string): Promise<void> => {
+      const all = getStorage('exercises', INITIAL_EXERCISES);
+      setStorage('exercises', all.filter(e => e.id !== id));
     }
   },
 

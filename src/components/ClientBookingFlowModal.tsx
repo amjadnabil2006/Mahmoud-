@@ -32,6 +32,7 @@ interface Props {
   onClose: () => void;
   activePatient: Patient;
   doctors: Doctor[];
+  departments?: Department[];
   initialDeptId?: string;
   initialStep?: 1 | 2;
   onCompleteBooking: (appointment: Omit<Appointment, 'id'>) => void;
@@ -45,6 +46,7 @@ export const ClientBookingFlowModal: React.FC<Props> = ({
   onClose,
   activePatient,
   doctors,
+  departments = CLINICAL_DEPARTMENTS,
   initialDeptId,
   initialStep,
   onCompleteBooking,
@@ -85,7 +87,7 @@ export const ClientBookingFlowModal: React.FC<Props> = ({
   // Filter doctors by selected department
   const departmentDoctors = doctors.filter(d => d.departmentId === selectedDeptId);
   const activeDoctor = doctors.find(d => d.id === selectedDoctorId) || departmentDoctors[0] || doctors[0];
-  const activeDept = CLINICAL_DEPARTMENTS.find(d => d.id === selectedDeptId) || CLINICAL_DEPARTMENTS[0];
+  const activeDept = departments.find(d => d.id === selectedDeptId) || departments[0] || CLINICAL_DEPARTMENTS[0];
 
   // Auto-Match feature: picks best rated doctor available
   const handleAutoMatchDoctor = () => {
@@ -296,7 +298,7 @@ export const ClientBookingFlowModal: React.FC<Props> = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {CLINICAL_DEPARTMENTS.map((dept) => {
+                {departments.map((dept) => {
                   const isSelected = selectedDeptId === dept.id;
 
                   return (
