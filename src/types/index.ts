@@ -38,11 +38,102 @@ export interface Doctor {
   experienceYears: number;
   priceSAR: number;
   priceUSD: number;
+  priceYER: number;
   activePatientsCount: number;
   availableDays: string[];
   nextAvailableSlot: string;
   languages: string[];
+  dialect: string;
+  isLicensed: boolean;
+  punctualityRate: number; // e.g. 99%
   isAvailable?: boolean;
+}
+
+export type TherapyPathwayType = 'instant' | 'individual' | 'couples' | 'child';
+export type SessionFormatType = 'video' | 'audio' | 'text';
+
+export interface TherapyPackage {
+  id: string;
+  nameAr: string;
+  nameEn: string;
+  badge?: string;
+  sessionsCount: number;
+  validityMonths: number;
+  priceUSD: number;
+  priceYER: number;
+  priceSAR: number;
+  originalPriceUSD?: number;
+  saveAmountUSD?: number;
+  saveTextAr?: string;
+  isPopular?: boolean;
+  descriptionAr: string;
+  sessionDurationText: string;
+  featuresAr: string[];
+  cancelAnytimeNoticeAr: string;
+}
+
+export interface Coupon {
+  code: string;
+  discountPercent: number;
+  descriptionAr: string;
+  isValid: boolean;
+}
+
+export interface ClientUser {
+  id: string;
+  clientCode: string; // e.g. CM-884920 or CM-GUEST-7712
+  nameOrAlias: string;
+  email: string;
+  phone: string;
+  country: string; // 'YE' | 'SA' | 'AE' | 'EG' | 'OTHER'
+  currency: 'USD' | 'YER' | 'SAR';
+  isAnonymous: boolean;
+  activePackageId?: string;
+  packageSessionsRemaining: number;
+  packageSessionsTotal: number;
+  referralCode: string;
+  referralRewardsUSD: number;
+  assignedDoctorId?: string;
+  assignedDoctorName?: string;
+  createdAt: string;
+}
+
+export interface InvoiceRecord {
+  id: string;
+  invoiceNumber: string;
+  date: string;
+  clientCode: string;
+  clientName: string;
+  description: string;
+  doctorName?: string;
+  amountUSD: number;
+  amountYER: number;
+  amountSAR: number;
+  currency: 'USD' | 'YER' | 'SAR';
+  paymentMethod: string;
+  transactionRef: string;
+  status: 'مدفوع ومكتمل' | 'مسترد بالكامل' | 'مسترد جزئياً' | 'معلق';
+}
+
+export interface DoctorReview {
+  id: string;
+  doctorId: string;
+  clientCode: string;
+  clientAlias: string;
+  rating: number; // 1-5
+  comment: string;
+  date: string;
+}
+
+export interface MatchingQuestionnaireData {
+  pathway: TherapyPathwayType;
+  ageGroup: 'child_under_18' | 'adult_18_35' | 'adult_35_plus';
+  parentalConsentAgreed?: boolean;
+  problemCategory: string;
+  genderPreference: 'any' | 'male' | 'female';
+  dialectPreference: 'any' | 'yemeni' | 'gulf' | 'egyptian' | 'levantine' | 'standard_arabic';
+  formatPreference: SessionFormatType;
+  preferredTime: 'morning' | 'afternoon' | 'evening';
 }
 
 export interface ClinicSettings {

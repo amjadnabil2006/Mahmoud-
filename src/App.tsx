@@ -97,9 +97,12 @@ export default function App() {
 
   const [isBookingModalOpen, setIsBookingModalOpen] = useState<boolean>(false);
   const [bookingInitialDeptId, setBookingInitialDeptId] = useState<string>('psychiatry');
+  const [bookingInitialDoctorId, setBookingInitialDoctorId] = useState<string>('');
+  const [bookingInitialPathway, setBookingInitialPathway] = useState<any>('individual');
+  const [bookingInitialFormat, setBookingInitialFormat] = useState<any>('video');
   const [bookingInitialStep, setBookingInitialStep] = useState<1 | 2>(1);
   const [isSelfDiagnosticModalOpen, setIsSelfDiagnosticModalOpen] = useState<boolean>(false);
-  const [patientTab, setPatientTab] = useState<'departments' | 'overview' | 'appointments' | 'meds' | 'scales' | 'exercises' | 'messages'>('departments');
+  const [patientTab, setPatientTab] = useState<any>('departments');
 
   // Sync theme with document element
   useEffect(() => {
@@ -660,9 +663,12 @@ export default function App() {
               notifications={notifications}
               activeTab={patientTab}
               onTabChange={setPatientTab}
-              onBookAppointmentClick={() => {
-                setBookingInitialDeptId('psychiatry');
-                setBookingInitialStep(1);
+              onBookAppointmentClick={(docId, deptId, pathway, format) => {
+                if (docId) setBookingInitialDoctorId(docId);
+                if (deptId) setBookingInitialDeptId(deptId);
+                if (pathway) setBookingInitialPathway(pathway);
+                if (format) setBookingInitialFormat(format);
+                setBookingInitialStep(docId ? 2 : 1);
                 setIsBookingModalOpen(true);
               }}
               onBookDepartmentClick={(deptId) => {
@@ -677,6 +683,21 @@ export default function App() {
               onViewPrescription={(rx) => {
                 setSelectedPrescriptionForView(rx);
                 setIsPrescriptionModalOpen(true);
+              }}
+              onCancelAppointment={async (aptId) => {
+                await api.appointments.updateStatus(aptId, 'ملغي');
+                setAppointments(prev => prev.map(a => a.id === aptId ? { ...a, status: 'ملغي' } : a));
+                alert('تم إلغاء الموعد وتطبيق سياسة الاسترداد.');
+              }}
+              onDoctorRated={(doctorId, rating, comment) => {
+                setDoctors(prev => prev.map(d => {
+                  if (d.id === doctorId) {
+                    const newCount = d.reviewsCount + 1;
+                    const newRating = Number(((d.rating * d.reviewsCount + rating) / newCount).toFixed(2));
+                    return { ...d, rating: newRating, reviewsCount: newCount };
+                  }
+                  return d;
+                }));
               }}
             />
           )}
@@ -863,6 +884,9 @@ export default function App() {
         doctors={doctors}
         departments={departments}
         initialDeptId={bookingInitialDeptId}
+        initialDoctorId={bookingInitialDoctorId}
+        initialPathway={bookingInitialPathway}
+        initialFormat={bookingInitialFormat}
         initialStep={bookingInitialStep}
         onCompleteBooking={handleBookAppointment}
         onOpenSelfDiagnostic={() => setIsSelfDiagnosticModalOpen(true)}
