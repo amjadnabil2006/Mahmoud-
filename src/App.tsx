@@ -257,9 +257,9 @@ export default function App() {
     });
   };
 
-  const handleBookAppointment = async (newApt: Appointment) => {
-    await api.appointments.create(newApt);
-    setAppointments([newApt, ...appointments]);
+  const handleBookAppointment = async (aptData: Omit<Appointment, 'id'>) => {
+    const newApt = await api.appointments.create(aptData);
+    setAppointments(prev => [newApt, ...prev]);
 
     const notif = await api.notifications.add({
       title: 'تم تأكيد حجز موعد استشارة جديد',
@@ -326,53 +326,53 @@ export default function App() {
   // Admin handlers
   const handleAddNewDoctor = async (doc: Omit<Doctor, 'id'>) => {
     const newDoc = await api.doctors.create(doc);
-    setDoctors([newDoc, ...doctors]);
+    setDoctors(prev => [newDoc, ...prev]);
   };
-  const handleUpdateDoctor = async (doc: Doctor) => {
-    const updated = await api.doctors.update(doc);
-    setDoctors(updated);
+  const handleUpdateDoctor = async (id: string, updated: Partial<Doctor>) => {
+    const updatedDoc = await api.doctors.update(id, updated);
+    setDoctors(prev => prev.map(d => d.id === id ? updatedDoc : d));
   };
   const handleDeleteDoctor = async (id: string) => {
-    const updated = await api.doctors.delete(id);
-    setDoctors(updated);
+    await api.doctors.delete(id);
+    setDoctors(prev => prev.filter(d => d.id !== id));
   };
 
   const handleAddNewPatient = async (pData: Omit<Patient, 'id'>) => {
     const newPat = await api.patients.create(pData);
-    setPatients([newPat, ...patients]);
+    setPatients(prev => [newPat, ...prev]);
   };
-  const handleUpdatePatient = async (p: Patient) => {
-    const updated = await api.patients.update(p);
-    setPatients(updated);
+  const handleUpdatePatient = async (id: string, updated: Partial<Patient>) => {
+    const updatedPat = await api.patients.update(id, updated);
+    setPatients(prev => prev.map(p => p.id === id ? updatedPat : p));
   };
   const handleDeletePatient = async (id: string) => {
-    const updated = await api.patients.delete(id);
-    setPatients(updated);
+    await api.patients.delete(id);
+    setPatients(prev => prev.filter(p => p.id !== id));
   };
 
-  const handleUpdateAppointment = async (apt: Appointment) => {
-    const updated = await api.appointments.update(apt);
-    setAppointments(updated);
+  const handleUpdateAppointment = async (id: string, updated: Partial<Appointment>) => {
+    const updatedApt = await api.appointments.update(id, updated);
+    setAppointments(prev => prev.map(a => a.id === id ? updatedApt : a));
   };
   const handleDeleteAppointment = async (id: string) => {
-    const updated = await api.appointments.delete(id);
-    setAppointments(updated);
+    await api.appointments.delete(id);
+    setAppointments(prev => prev.filter(a => a.id !== id));
   };
 
   const handleAddExercise = async (ex: Omit<TherapyExercise, 'id'>) => {
-    const updated = await api.exercises.create(ex);
-    setExercises(updated);
+    const newEx = await api.exercises.create(ex);
+    setExercises(prev => [...prev, newEx]);
   };
-  const handleUpdateExercise = async (ex: TherapyExercise) => {
-    const updated = await api.exercises.update(ex);
-    setExercises(updated);
+  const handleUpdateExercise = async (id: string, updated: Partial<TherapyExercise>) => {
+    const updatedEx = await api.exercises.update(id, updated);
+    setExercises(prev => prev.map(e => e.id === id ? updatedEx : e));
   };
   const handleDeleteExercise = async (id: string) => {
-    const updated = await api.exercises.delete(id);
-    setExercises(updated);
+    await api.exercises.delete(id);
+    setExercises(prev => prev.filter(e => e.id !== id));
   };
 
-  const handleUpdateSettings = async (sets: ClinicSettings) => {
+  const handleUpdateSettings = async (sets: Partial<ClinicSettings>) => {
     const updated = await api.settings.update(sets);
     setClinicSettings(updated);
   };
@@ -381,20 +381,20 @@ export default function App() {
     setClinicSettings(res);
   };
 
-  const handleCreateDepartment = async (dept: Omit<Department, 'id'>) => {
-    const updated = await api.departments.create(dept);
-    setDepartments(updated);
+  const handleCreateDepartment = async (dept: Omit<Department, 'id'> & { id?: string }) => {
+    const newDept = await api.departments.create(dept);
+    setDepartments(prev => [...prev, newDept]);
   };
-  const handleUpdateDepartment = async (dept: Department) => {
-    const updated = await api.departments.update(dept);
-    setDepartments(updated);
+  const handleUpdateDepartment = async (id: string, updated: Partial<Department>) => {
+    const updatedDept = await api.departments.update(id, updated);
+    setDepartments(prev => prev.map(d => d.id === id ? updatedDept : d));
   };
   const handleDeleteDepartment = async (id: string) => {
-    const updated = await api.departments.delete(id);
-    setDepartments(updated);
+    await api.departments.delete(id);
+    setDepartments(prev => prev.filter(d => d.id !== id));
   };
   const handleResetDepartments = async () => {
-    const res = await api.departments.reset();
+    const res = await api.departments.resetToDefault();
     setDepartments(res);
   };
   const handleOpenDepartmentManager = (dept?: Department) => {
