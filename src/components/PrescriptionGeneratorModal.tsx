@@ -8,15 +8,20 @@ import {
   ShieldAlert, 
   Check, 
   FileCheck2,
-  Stethoscope
+  Stethoscope,
+  ShieldCheck,
+  AlertTriangle,
+  Lock
 } from 'lucide-react';
-import { Patient, Prescription, PrescriptionItem } from '../types';
+import { Patient, Prescription, PrescriptionItem, StaffUser } from '../types';
 import { PSYCHIATRIC_MEDS_DATA } from '../data/psychiatricMeds';
+import { DISORDERS_DATA } from '../data/disorders';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   activePatient: Patient;
+  currentStaff: StaffUser | null;
   onSavePrescription: (prescription: Prescription) => void;
 }
 
@@ -24,14 +29,22 @@ export const PrescriptionGeneratorModal: React.FC<Props> = ({
   isOpen,
   onClose,
   activePatient,
+  currentStaff,
   onSavePrescription,
 }) => {
+  const isPsychiatrist = currentStaff?.role === 'psychiatrist' || currentStaff?.role === 'admin';
+
+  const [selectedDiagnosis, setSelectedDiagnosis] = useState<string>(
+    activePatient.primaryDiagnosis || DISORDERS_DATA[0].nameAr
+  );
   const [selectedMedId, setSelectedMedId] = useState<string>(PSYCHIATRIC_MEDS_DATA[0].id);
-  const [dosage, setDosage] = useState<string>('10 مجم (قرص واحد)');
-  const [frequency, setFrequency] = useState<string>('مرة واحدة يومياً صباحاً بعد الطعام');
+  const [dosage, setDosage] = useState<string>('');
+  const [frequency, setFrequency] = useState<string>('');
   const [duration, setDuration] = useState<string>('لمدة 30 يوماً');
-  const [instructions, setInstructions] = useState<string>('الالتزام التام بالمواعيد دون انقطاع مفاجئ.');
-  const [specialInstructions, setSpecialInstructions] = useState<string>('مراجعة العيادة بعد 4 أسابيع لإعادة تقييم الأعراض والتجاوب الإكلينيكي.');
+  const [instructions, setInstructions] = useState<string>('');
+  const [specialInstructions, setSpecialInstructions] = useState<string>(
+    'مراجعة العيادة بعد 4 أسابيع لإعادة تقييم الأعراض والتجاوب الإكلينيكي.'
+  );
   
   const [prescriptionItems, setPrescriptionItems] = useState<PrescriptionItem[]>([
     {
@@ -41,17 +54,30 @@ export const PrescriptionGeneratorModal: React.FC<Props> = ({
       dosage: '10 مجم (قرص واحد)',
       frequency: 'مرة واحدة يومياً صباحاً بعد الطعام',
       duration: 'لمدة شهر (30 يوماً)',
-      instructions: 'يؤخذ بانتظام، مع مراقبة التحسن بعد أسبوعين.'
+      instructions: 'يؤخذ بانتظام دون انقطاع، مع مراقبة التحسن بعد أسبوعين.'
     }
   ]);
 
   const [isPreviewMode, setIsPreviewMode] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   if (!isOpen) return null;
 
   const currentMed = PSYCHIATRIC_MEDS_DATA.find(m => m.id === selectedMedId) || PSYCHIATRIC_MEDS_DATA[0];
 
+  // Allergy conflict check (OBS-D-023)
+  const hasAllergyConflict = activePatient.allergies?.some(alg => 
+    currentMed.genericName.toLowerCase().includes(alg.substance.toLowerCase()) ||
+    currentMed.tradeNames.some(t => t.toLowerCase().includes(alg.substance.toLowerCase()))
+  );
+
   const handleAddMed = () => {
+    if (!dosage || !frequency) {
+      setErrorMessage('يرجى إدخال الجرعة الدوائية والتكرار اليومي بصورة دقيقة.');
+      return;
+    }
+    setErrorMessage('');
+
     const newItem: PrescriptionItem = {
       medId: currentMed.id,
       genericName: currentMed.genericName,
@@ -59,10 +85,13 @@ export const PrescriptionGeneratorModal: React.FC<Props> = ({
       dosage,
       frequency,
       duration,
-      instructions
+      instructions: instructions || 'يؤخذ بانتظام بعد وجبة الطعام.'
     };
 
     setPrescriptionItems([...prescriptionItems, newItem]);
+    setDosage('');
+    setFrequency('');
+    setInstructions('');
   };
 
   const handleRemoveItem = (index: number) => {
@@ -74,362 +103,314 @@ export const PrescriptionGeneratorModal: React.FC<Props> = ({
   };
 
   const handleSave = () => {
+    if (prescriptionItems.length === 0) {
+      setErrorMessage('يجب إضافة دواء واحد على الأقل للوصفة.');
+      return;
+    }
+    if (!selectedDiagnosis) {
+      setErrorMessage('التشخيص الطبي إلزامي لاعتماد الوصفة.');
+      return;
+    }
+
+    const doctorLicense = currentStaff?.licenseNumber || 'MD-PSY-98442';
+    const rxSerial = `RX-2026-${doctorLicense.replace(/[^0-9]/g, '').slice(0, 5) || '98442'}-${Date.now().toString().slice(-4)}`;
+
     const rx: Prescription = {
       id: 'rx-' + Date.now(),
+      prescriptionNumber: rxSerial,
       patientId: activePatient.id,
       patientName: activePatient.name,
       patientAge: activePatient.age,
       fileNumber: activePatient.fileNumber,
       date: new Date().toISOString().split('T')[0],
-      diagnosis: activePatient.primaryDiagnosis || 'اضطراب نفسي قيد المتابعة',
+      diagnosis: selectedDiagnosis,
       items: prescriptionItems,
       specialInstructions,
-      doctorName: 'د. طارق الحكيم',
-      licenseNumber: 'MD-PSY-98442'
+      doctorId: currentStaff?.doctorId || 'doc-hakim',
+      doctorName: currentStaff?.name || 'د. طارق الحكيم',
+      licenseNumber: doctorLicense,
+      doctorSignature: `${currentStaff?.name || 'د. طارق الحكيم'} - استشاري الطب النفسي`,
+      isOfficialStamped: true,
+      status: 'نشطة'
     };
 
     onSavePrescription(rx);
     onClose();
   };
 
+  // RBAC Block if not Psychiatrist (OBS-D-003)
+  if (!isPsychiatrist) {
+    return (
+      <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-6 text-right space-y-4 shadow-2xl border border-rose-200 dark:border-rose-900">
+          <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950 text-rose-600 flex items-center justify-center mx-auto">
+            <Lock className="w-6 h-6" />
+          </div>
+
+          <div className="text-center space-y-1.5">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              غير مصرح: صلاحية حصرية للطبيب النفسي
+            </h3>
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              وفق المعايير الطبية ولوائح وزارة الصحة والـ RBAC، فإن إصدار وتعديل الوصفات الدوائية مقصور حصرياً على الأطباء النفسيين المرخصين (Psychiatrist).
+            </p>
+            <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs text-slate-500 font-mono">
+              دورك الحالي: {currentStaff?.role} ({currentStaff?.specialty})
+            </div>
+          </div>
+
+          <div className="flex justify-center pt-2">
+            <button
+              onClick={onClose}
+              className="px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-bold"
+            >
+              العودة للعيادة
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right my-8 max-h-[90vh] flex flex-col transition-colors">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-4xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-right my-8 max-h-[92vh] flex flex-col transition-colors">
         
         {/* Header */}
-        <div className="bg-slate-900 text-white p-5 flex items-center justify-between border-b border-slate-800">
+        <div className="bg-slate-900 text-white p-5 flex items-center justify-between border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 border border-teal-500/30 flex items-center justify-center">
               <Stethoscope className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-teal-300 font-semibold">وصفة طبية نفسية إلكترونية (E-Prescription)</span>
-                <span className="text-xs text-slate-400">· المريض: <strong>{activePatient.name}</strong></span>
+                <span className="text-xs text-teal-300 font-semibold">منظومة الوصفات الرقمية E-Prescription</span>
+                <span className="text-xs text-slate-400">· المريض: <strong>{activePatient.name}</strong> ({activePatient.fileNumber})</span>
               </div>
-              <h2 className="text-lg font-bold">تحرير وتوثيق الوصفة الدوائية النفسية</h2>
+              <h2 className="text-lg font-bold text-white">إصدار وصفة دوائية نفسية معتمدة ومختومة</h2>
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsPreviewMode(!isPreviewMode)}
-              className="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-300 transition-colors cursor-pointer"
-            >
-              {isPreviewMode ? 'العودة للتحرير' : 'معاينة الوصفة الرسمية'}
-            </button>
-            <button 
-              onClick={onClose}
-              className="text-slate-400 hover:text-white p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+          <button 
+            onClick={onClose}
+            className="text-slate-400 hover:text-white p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Modal Body */}
-        {!isPreviewMode ? (
-          <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-900 dark:text-slate-100">
-            
-            {/* Top Patient Summary */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 text-xs">
-              <div>
-                <span className="text-slate-400 dark:text-slate-500 block font-medium">اسم المريض</span>
-                <span className="font-bold text-slate-900 dark:text-white text-sm">{activePatient.name}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 dark:text-slate-500 block font-medium">رقم الملف</span>
-                <span className="font-bold text-slate-700 dark:text-slate-300">{activePatient.fileNumber}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 dark:text-slate-500 block font-medium">العمر / الجنس</span>
-                <span className="font-bold text-slate-700 dark:text-slate-300">{activePatient.age} سنة / {activePatient.gender}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 dark:text-slate-500 block font-medium">التشخيص الحالي</span>
-                <span className="font-bold text-teal-800 dark:text-teal-400">{activePatient.primaryDiagnosis || 'غير محدد'}</span>
-              </div>
-            </div>
-
-            {/* Medication Selector & Form */}
-            <div className="bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl p-5 shadow-2xs space-y-4">
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                <span>إضافة دواء من الدليل النفسي:</span>
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    اختر الدواء النفسي:
-                  </label>
-                  <select
-                    value={selectedMedId}
-                    onChange={(e) => {
-                      const m = PSYCHIATRIC_MEDS_DATA.find(item => item.id === e.target.value);
-                      setSelectedMedId(e.target.value);
-                      if (m) {
-                        setDosage(m.startingDose);
-                      }
-                    }}
-                    className="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-teal-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                  >
-                    {PSYCHIATRIC_MEDS_DATA.map(med => (
-                      <option key={med.id} value={med.id}>
-                        {med.tradeNames.join(' / ')} ({med.genericName}) - {med.classAr}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    الجرعة والتركيز:
-                  </label>
-                  <input
-                    type="text"
-                    value={dosage}
-                    onChange={(e) => setDosage(e.target.value)}
-                    className="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-teal-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                    placeholder="مثال: 10 مجم قرص واحد"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    التكرار وموعد التناول:
-                  </label>
-                  <input
-                    type="text"
-                    value={frequency}
-                    onChange={(e) => setFrequency(e.target.value)}
-                    className="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-teal-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                    placeholder="مثال: مرة واحدة يومياً صباحاً بعد الإفطار"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    مدة الصرف:
-                  </label>
-                  <input
-                    type="text"
-                    value={duration}
-                    onChange={(e) => setDuration(e.target.value)}
-                    className="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-teal-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                    placeholder="مثال: لمدة 30 يوماً"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    تعليمات وتحذيرات خاصة للمريض:
-                  </label>
-                  <input
-                    type="text"
-                    value={instructions}
-                    onChange={(e) => setInstructions(e.target.value)}
-                    className="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-teal-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                    placeholder="مثال: تجنب القيادة إذا شعرت بنعاس، وعدم التوقف المفاجئ..."
-                  />
-                </div>
-              </div>
-
-              {/* Drug Safety Box */}
-              {currentMed.blackBoxWarning && (
-                <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-start gap-2.5 text-xs text-amber-900 dark:text-amber-200">
-                  <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold block mb-0.5">تنبيه أمان سريري (FDA Black Box / Safety Warning):</span>
-                    <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">{currentMed.blackBoxWarning}</p>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={handleAddMed}
-                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-lg transition-colors shadow-2xs cursor-pointer"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>إضافة الدواء إلى الوصفة</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Current Prescription Items Table */}
-            <div>
-              <h4 className="font-bold text-slate-900 dark:text-white text-xs mb-2">
-                الأدوية المدرجة في الوصفة الحالية ({prescriptionItems.length}):
-              </h4>
-
-              {prescriptionItems.length === 0 ? (
-                <div className="p-6 text-center border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-400">
-                  لم يتم إضافة أدوية بعد. اختر دواءً من الأعلى واضغط إضافة.
-                </div>
-              ) : (
-                <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden shadow-2xs">
-                  <table className="w-full text-xs text-right">
-                    <thead className="bg-slate-100/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
-                      <tr>
-                        <th className="p-3">الدواء</th>
-                        <th className="p-3">الجرعة</th>
-                        <th className="p-3">التكرار والمدة</th>
-                        <th className="p-3">التعليمات</th>
-                        <th className="p-3 text-center">إجراء</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                      {prescriptionItems.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                          <td className="p-3">
-                            <span className="font-bold text-slate-900 dark:text-white block">{item.tradeName}</span>
-                            <span className="text-[11px] text-slate-400 font-mono">{item.genericName}</span>
-                          </td>
-                          <td className="p-3 font-semibold text-slate-800 dark:text-slate-200">{item.dosage}</td>
-                          <td className="p-3 text-slate-600 dark:text-slate-300">
-                            <div>{item.frequency}</div>
-                            <span className="text-[11px] text-teal-700 dark:text-teal-400 font-medium">{item.duration}</span>
-                          </td>
-                          <td className="p-3 text-slate-600 dark:text-slate-400 text-[11px]">{item.instructions}</td>
-                          <td className="p-3 text-center">
-                            <button
-                              onClick={() => handleRemoveItem(idx)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-                              title="حذف الدواء"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            {/* General Clinician Advice for the Prescription */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                توجيهات المتابعة الطبية والتحاليل المطلوبة:
-              </label>
-              <textarea
-                value={specialInstructions}
-                onChange={(e) => setSpecialInstructions(e.target.value)}
-                rows={2}
-                className="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-teal-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                placeholder="توجيهات موعد الزيارة القادمة، التحاليل المخبرية (وظائف كبد/كلى/غدة)..."
-              />
-            </div>
-
-          </div>
-        ) : (
-          /* Official Printable Prescription Sheet Preview */
-          <div className="p-8 overflow-y-auto flex-1 bg-slate-100 dark:bg-slate-950 flex items-center justify-center">
-            <div className="bg-white max-w-2xl w-full p-8 rounded-xl shadow-lg border border-slate-300 text-slate-900 font-sans text-right relative">
-              
-              {/* Clinic Header */}
-              <div className="border-b-2 border-slate-900 pb-4 mb-6 flex items-center justify-between">
-                <div>
-                  <h1 className="text-xl font-black text-slate-900">عيادة CoolMind للطب النفسي والعلاج التكاملي</h1>
-                  <p className="text-xs text-slate-500 mt-0.5">قسم الاستشارات النفسية والعلاج الدوائي</p>
-                  <p className="text-[11px] text-slate-400">الترخيص الطبي: MOH-PSY-2026-994</p>
-                </div>
-                <div className="text-left font-mono text-xs text-slate-500">
-                  <div className="font-bold text-teal-800 text-base">CoolMind Clinic</div>
-                  <div>Tel: 920000000</div>
-                  <div>Riyadh, KSA</div>
-                </div>
-              </div>
-
-              {/* Patient Meta Box */}
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 grid grid-cols-2 gap-2 text-xs mb-6">
-                <div><strong>اسم المريض:</strong> {activePatient.name}</div>
-                <div><strong>التاريخ:</strong> {new Date().toLocaleDateString('ar-EG')}</div>
-                <div><strong>رقم الملف:</strong> {activePatient.fileNumber}</div>
-                <div><strong>العمر / الجنس:</strong> {activePatient.age} سنة / {activePatient.gender}</div>
-                <div className="col-span-2"><strong>التشخيص الطبي:</strong> {activePatient.primaryDiagnosis}</div>
-              </div>
-
-              {/* Rx Symbol & Medication List */}
-              <div className="mb-8">
-                <div className="text-3xl font-black text-teal-800 font-serif mb-4">℞</div>
-                
-                <div className="space-y-4">
-                  {prescriptionItems.map((item, idx) => (
-                    <div key={idx} className="border-b border-dashed border-slate-200 pb-3">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-sm text-slate-900">
-                          {idx + 1}. {item.tradeName} ({item.genericName}) - {item.dosage}
-                        </span>
-                        <span className="text-xs font-semibold text-teal-800">{item.duration}</span>
-                      </div>
-                      <p className="text-xs text-slate-600 mt-1 mr-4">
-                        الجرعة: {item.frequency}
-                      </p>
-                      {item.instructions && (
-                        <p className="text-[11px] text-slate-500 mt-0.5 mr-4 italic">
-                          ملاحظة: {item.instructions}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Special Notes */}
-              {specialInstructions && (
-                <div className="bg-teal-50/50 border-r-2 border-teal-600 p-2.5 text-xs text-teal-950 mb-8">
-                  <strong>تعليمات الاستشاري:</strong> {specialInstructions}
-                </div>
-              )}
-
-              {/* Doctor Signature & Stamp */}
-              <div className="pt-6 border-t border-slate-200 flex items-end justify-between text-xs">
-                <div>
-                  <div className="w-24 h-24 border border-dashed border-slate-300 rounded-lg flex items-center justify-center text-[10px] text-slate-400">
-                    ختم العيادة الرسمي
-                  </div>
-                </div>
-                <div className="text-left">
-                  <div className="font-bold text-slate-900">د. طارق الحكيم</div>
-                  <div className="text-slate-500 text-[11px]">استشاري الطب النفسي والعلاج المعرفي</div>
-                  <div className="text-slate-400 font-mono text-[10px]">Lic: MD-PSY-98442</div>
-                  <div className="mt-2 font-cursive text-teal-800 text-lg">T. Al-Hakim, MD</div>
-                </div>
-              </div>
-
-            </div>
+        {/* Allergy Warning if applicable */}
+        {activePatient.allergies && activePatient.allergies.length > 0 && (
+          <div className="bg-rose-50 dark:bg-rose-950/40 p-3 border-b border-rose-200 dark:border-rose-900 flex items-center gap-2 text-xs text-rose-800 dark:text-rose-200 shrink-0">
+            <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>
+              <strong>تنبيه الحساسية الدوائية للمريض:</strong> {activePatient.allergies.map(a => a.substance).join(' ، ')}
+            </span>
           </div>
         )}
 
-        {/* Footer Actions */}
-        <div className="bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between">
-          <div className="text-xs text-slate-500 dark:text-slate-400">
-            {prescriptionItems.length} أدوية مسجلة في الوصفة
+        {/* Doctor Identity Strip */}
+        <div className="p-3 bg-teal-50/50 dark:bg-teal-950/20 border-b border-teal-100 dark:border-teal-900 flex items-center justify-between text-xs text-teal-900 dark:text-teal-200 shrink-0">
+          <div>
+            الطبيب المصدر: <strong>{currentStaff?.name || 'د. طارق الحكيم'}</strong> (ترخيص: <span className="font-mono">{currentStaff?.licenseNumber || 'MD-PSY-98442'}</span>)
+          </div>
+          <div className="font-mono text-[11px] text-slate-500">
+            كود التحقق الرقمي: RX-2026-COOLMIND
+          </div>
+        </div>
+
+        {/* Error message */}
+        {errorMessage && (
+          <div className="p-3 bg-rose-50 border-b border-rose-200 text-rose-700 text-xs flex items-center gap-2 shrink-0">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
+        {/* Body */}
+        <div className="p-6 overflow-y-auto space-y-6 flex-1 text-right text-slate-900 dark:text-slate-100">
+          
+          {/* Mandatory Diagnosis Selection (OBS-D-005) */}
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+            <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+              التشخيص الإكلينيكي الإلزامي (DSM-5 / ICD-10) *
+            </label>
+            <select
+              value={selectedDiagnosis}
+              onChange={(e) => setSelectedDiagnosis(e.target.value)}
+              className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-hidden"
+            >
+              {DISORDERS_DATA.map(dis => (
+                <option key={dis.id} value={`${dis.nameAr} (${dis.codeICD11} / ${dis.codeDSM5})`}>
+                  {dis.nameAr} ({dis.codeICD11} / DSM-5: {dis.codeDSM5})
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="flex items-center gap-2">
-            {isPreviewMode && (
-              <button
-                type="button"
-                onClick={handlePrint}
-                className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 rounded-xl transition-colors shadow-2xs cursor-pointer"
-              >
-                <Printer className="w-4 h-4" />
-                <span>طباعة الوصفة (Print)</span>
-              </button>
+          {/* Add Medication Box */}
+          <div className="bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4">
+            <h3 className="text-xs font-bold text-teal-800 dark:text-teal-400 flex items-center gap-1.5">
+              <Plus className="w-4 h-4" />
+              <span>إضافة دواء جديد من الدليل السريري</span>
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  اختر الدواء
+                </label>
+                <select
+                  value={selectedMedId}
+                  onChange={(e) => setSelectedMedId(e.target.value)}
+                  className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white"
+                >
+                  {PSYCHIATRIC_MEDS_DATA.map(med => (
+                    <option key={med.id} value={med.id}>
+                      {med.tradeNames.join('/')} ({med.genericName}) - {med.classAr}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  الجرعة الدقيقة *
+                </label>
+                <input
+                  type="text"
+                  value={dosage}
+                  onChange={(e) => setDosage(e.target.value)}
+                  placeholder="مثال: 10 مجم (قرص واحد) أو 20 مجم"
+                  className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  تكرار الجرعة اليومية *
+                </label>
+                <input
+                  type="text"
+                  value={frequency}
+                  onChange={(e) => setFrequency(e.target.value)}
+                  placeholder="مثال: مرة واحدة صباحاً بعد الإفطار أو مرتين يومياً"
+                  className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  مدة العلاج
+                </label>
+                <input
+                  type="text"
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                  placeholder="مثال: لمدة 30 يوماً"
+                  className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            {/* Blackbox Warning if exists */}
+            {currentMed.blackBoxWarning && (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-xl text-xs text-amber-900 dark:text-amber-200 space-y-1">
+                <div className="font-bold flex items-center gap-1">
+                  <AlertOctagon className="w-4 h-4 text-amber-600" />
+                  <span>تحذير الصندوق الأسود (Black Box Warning):</span>
+                </div>
+                <p className="text-[11px] leading-relaxed">{currentMed.blackBoxWarning}</p>
+              </div>
             )}
 
             <button
               type="button"
-              onClick={handleSave}
-              disabled={prescriptionItems.length === 0}
-              className="flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 disabled:bg-slate-300 dark:disabled:bg-slate-700 rounded-xl transition-colors shadow-sm cursor-pointer"
+              onClick={handleAddMed}
+              className="px-4 py-2 bg-slate-900 dark:bg-teal-700 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
             >
-              <FileCheck2 className="w-4 h-4" />
-              <span>اعتماد الوصفة وحفظها في السجل</span>
+              <Plus className="w-4 h-4" />
+              <span>إدراج الدواء في الوصفة</span>
+            </button>
+          </div>
+
+          {/* Current Items in Rx */}
+          <div className="space-y-3">
+            <h4 className="font-bold text-xs text-slate-800 dark:text-slate-200">
+              الأدوية المدرجة في هذه الوصفة ({prescriptionItems.length}):
+            </h4>
+
+            {prescriptionItems.map((item, idx) => (
+              <div
+                key={idx}
+                className="p-4 bg-slate-50 dark:bg-slate-800/70 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 text-xs"
+              >
+                <div className="space-y-1 min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <strong className="text-teal-900 dark:text-teal-200 font-bold">{item.tradeName}</strong>
+                    <span className="text-slate-500 font-mono">({item.genericName})</span>
+                    <span className="px-2 py-0.5 rounded-md bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-300 font-bold text-[10px]">
+                      {item.dosage}
+                    </span>
+                  </div>
+                  <p className="text-slate-600 dark:text-slate-300 text-[11px]">
+                    التكرار: <strong>{item.frequency}</strong> · المدة: <strong>{item.duration}</strong>
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleRemoveItem(idx)}
+                  className="text-rose-500 hover:text-rose-700 p-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950 cursor-pointer"
+                  title="حذف الدواء"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Special Instructions */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              تعليمات وتحذيرات خاصة للمريض والصيدلي
+            </label>
+            <textarea
+              rows={2}
+              value={specialInstructions}
+              onChange={(e) => setSpecialInstructions(e.target.value)}
+              className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"
+            ></textarea>
+          </div>
+
+        </div>
+
+        {/* Footer */}
+        <div className="bg-slate-50 dark:bg-slate-800/80 p-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <Printer className="w-4 h-4 text-slate-500" />
+            <span>معاينة الطباعة</span>
+          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs text-slate-500 font-bold"
+            >
+              إلغاء
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="px-6 py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-teal-700/20 flex items-center gap-1.5 cursor-pointer"
+            >
+              <Check className="w-4 h-4" />
+              <span>اعتماد الوصفة وختمها رسمياً</span>
             </button>
           </div>
         </div>

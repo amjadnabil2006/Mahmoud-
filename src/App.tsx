@@ -9,6 +9,9 @@ import { PrescriptionGeneratorModal } from './components/PrescriptionGeneratorMo
 import { ClinicalFormModal } from './components/ClinicalFormModal';
 import { ClientBookingFlowModal } from './components/ClientBookingFlowModal';
 import { SelfDiagnosticTriageModal } from './components/SelfDiagnosticTriageModal';
+import { StaffAuthModal } from './components/StaffAuthModal';
+import { JoinTeamModal } from './components/JoinTeamModal';
+import { DoctorPatientFileModal } from './components/DoctorPatientFileModal';
 
 import { PatientPortalView } from './views/PatientPortalView';
 import { AdminPortalView } from './views/AdminPortalView';
@@ -20,6 +23,13 @@ import { ClinicalFormsView } from './views/ClinicalFormsView';
 import { NutritionSocialView } from './views/NutritionSocialView';
 import { HandbookView } from './views/HandbookView';
 import { AccessControlView } from './views/AccessControlView';
+
+import { DoctorAppointmentsTab } from './components/DoctorAppointmentsTab';
+import { DoctorChatsTab } from './components/DoctorChatsTab';
+import { DoctorScheduleTab } from './components/DoctorScheduleTab';
+import { DoctorFinancialsTab } from './components/DoctorFinancialsTab';
+import { DoctorPeerConsultationsTab } from './components/DoctorPeerConsultationsTab';
+import { DoctorReportsTab } from './components/DoctorReportsTab';
 
 import { 
   Patient, 
@@ -35,7 +45,9 @@ import {
   AuditLog, 
   ClinicAnalytics,
   AppNotification,
-  ClinicSettings
+  ClinicSettings,
+  StaffUser,
+  SavedClinicalRecord
 } from './types';
 
 import { 
@@ -52,7 +64,8 @@ import {
 import { INITIAL_PATIENTS, INITIAL_ASSESSMENT_RESULTS, INITIAL_PRESCRIPTIONS } from './data/mockPatients';
 import { Department, CLINICAL_DEPARTMENTS } from './data/departments';
 import { DepartmentManagementModal } from './components/DepartmentManagementModal';
-import { Megaphone } from 'lucide-react';
+import { staffAuthService } from './services/staffAuth';
+import { Megaphone, UserCheck, Zap, Award, Stethoscope, Lock } from 'lucide-react';
 
 export default function App() {
   // Theme state: dark / light
@@ -63,9 +76,16 @@ export default function App() {
   // Active Portal: 'patient' | 'doctor' | 'admin'
   const [activePortal, setActivePortal] = useState<PortalType>('patient');
 
+  // Staff User authentication state
+  const [currentStaff, setCurrentStaff] = useState<StaffUser | null>(() => {
+    return staffAuthService.getCurrentStaff();
+  });
+  const [isStaffAuthModalOpen, setIsStaffAuthModalOpen] = useState(false);
+  const [isJoinTeamModalOpen, setIsJoinTeamModalOpen] = useState(false);
+
   // Doctor tab state
   const [currentTab, setCurrentTab] = useState<TabId>('dashboard');
-  const [currentRole, setCurrentRole] = useState<UserRole>('psychiatrist');
+  const currentRole: UserRole = currentStaff?.role || 'psychiatrist';
 
   // Data Collections
   const [clinicSettings, setClinicSettings] = useState<ClinicSettings>(INITIAL_SETTINGS);
@@ -94,6 +114,9 @@ export default function App() {
 
   const [isClinicalFormModalOpen, setIsClinicalFormModalOpen] = useState<boolean>(false);
   const [clinicalFormType, setClinicalFormType] = useState<'mse' | 'suicide_risk' | 'soap_note'>('mse');
+
+  const [isPatientFileModalOpen, setIsPatientFileModalOpen] = useState(false);
+  const [selectedPatientForFile, setSelectedPatientForFile] = useState<Patient>(INITIAL_PATIENTS[0]);
 
   const [isBookingModalOpen, setIsBookingModalOpen] = useState<boolean>(false);
   const [bookingInitialDeptId, setBookingInitialDeptId] = useState<string>('psychiatry');
@@ -151,224 +174,23 @@ export default function App() {
         }
         setNotifications(deduped);
       }
-      setAnalytics(kpis);
     };
     loadData();
   }, []);
 
-  const handleMarkAllNotificationsRead = async () => {
-    const updated = await api.notifications.markAllAsRead();
-    setNotifications(updated);
-  };
+  const activePatient = patients.find(p => p.id === activePatientId) || patients[0];
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
   };
-
-  const activePatient = patients.find(p => p.id === activePatientId) || patients[0];
 
   const handleSelectPatient = (patient: Patient) => {
     setActivePatientId(patient.id);
-  };
-
-  // Department Management Handlers
-  const handleOpenDepartmentManager = (dept?: Department) => {
-    setDepartmentToEdit(dept || null);
-    setIsDepartmentModalOpen(true);
-  };
-
-  const handleCreateDepartment = async (deptData: Omit<Department, 'id'> & { id?: string }) => {
-    const created = await api.departments.create(deptData);
-    const updated = [...departments, created];
-    setDepartments(updated);
-
-    await api.auditLogs.log({
-      actorName: 'مدير المنصة',
-      actorRole: 'admin',
-      action: `إضافة قسم طبي جديد: ${created.nameAr}`,
-      target: `أقسام العيادة / ${created.id}`,
-      ipAddress: '192.168.1.1',
-      status: 'نجاح'
-    });
-  };
-
-  const handleUpdateDepartment = async (id: string, updatedFields: Partial<Department>) => {
-    const updated = await api.departments.update(id, updatedFields);
-    const newDepts = departments.map(d => d.id === id ? updated : d);
-    setDepartments(newDepts);
-
-    await api.auditLogs.log({
-      actorName: 'مدير المنصة',
-      actorRole: 'admin',
-      action: `تعديل بيانات قسم طبي: ${updated.nameAr}`,
-      target: `أقسام العيادة / ${id}`,
-      ipAddress: '192.168.1.1',
-      status: 'نجاح'
-    });
-  };
-
-  const handleDeleteDepartment = async (id: string) => {
-    const targetDept = departments.find(d => d.id === id);
-    await api.departments.delete(id);
-    const newDepts = departments.filter(d => d.id !== id);
-    setDepartments(newDepts);
-
-    await api.auditLogs.log({
-      actorName: 'مدير المنصة',
-      actorRole: 'admin',
-      action: `حذف قسم طبي: ${targetDept?.nameAr || id}`,
-      target: `أقسام العيادة / ${id}`,
-      ipAddress: '192.168.1.1',
-      status: 'نجاح'
-    });
-  };
-
-  const handleResetDepartments = async () => {
-    const reset = await api.departments.resetToDefault();
-    setDepartments(reset);
-
-    await api.auditLogs.log({
-      actorName: 'مدير المنصة',
-      actorRole: 'admin',
-      action: 'استعادة الأقسام الطبية الافتراضية الأربعة',
-      target: 'أقسام العيادة',
-      ipAddress: '192.168.1.1',
-      status: 'نجاح'
-    });
-  };
-
-  // Full Admin Platform Handlers
-  const handleUpdateSettings = async (newSettings: Partial<ClinicSettings>) => {
-    const updated = await api.settings.update(newSettings);
-    setClinicSettings(updated);
-    await api.auditLogs.log({
-      actorName: 'مدير المنصة',
-      actorRole: 'admin',
-      action: 'تحديث وتطبيق إعدادات المنصة والموقع',
-      target: 'إعدادات الموقع',
-      ipAddress: '192.168.1.1',
-      status: 'نجاح'
-    });
-  };
-
-  const handleResetSettings = async () => {
-    const reset = await api.settings.reset();
-    setClinicSettings(reset);
-    await api.auditLogs.log({
-      actorName: 'مدير المنصة',
-      actorRole: 'admin',
-      action: 'استعادة إعدادات المنصة الافتراضية بالكامل',
-      target: 'إعدادات الموقع',
-      ipAddress: '192.168.1.1',
-      status: 'نجاح'
-    });
-  };
-
-  const handleUpdateDoctor = async (id: string, updated: Partial<Doctor>) => {
-    const doc = await api.doctors.update(id, updated);
-    setDoctors(prev => prev.map(d => d.id === id ? doc : d));
-    await api.auditLogs.log({
-      actorName: 'مدير المنصة',
-      actorRole: 'admin',
-      action: `تعديل بيانات الطبيب: ${doc.name}`,
-      target: `طبيب / ${id}`,
-      ipAddress: '192.168.1.1',
-      status: 'نجاح'
-    });
-  };
-
-  const handleDeleteDoctor = async (id: string) => {
-    const target = doctors.find(d => d.id === id);
-    await api.doctors.delete(id);
-    setDoctors(prev => prev.filter(d => d.id !== id));
-    await api.auditLogs.log({
-      actorName: 'مدير المنصة',
-      actorRole: 'admin',
-      action: `حذف حساب طبيب: ${target?.name || id}`,
-      target: `طبيب / ${id}`,
-      ipAddress: '192.168.1.1',
-      status: 'نجاح'
-    });
-  };
-
-  const handleUpdatePatient = async (id: string, updated: Partial<Patient>) => {
-    const pat = await api.patients.update(id, updated);
-    setPatients(prev => prev.map(p => p.id === id ? pat : p));
-    await api.auditLogs.log({
-      actorName: 'مدير المنصة',
-      actorRole: 'admin',
-      action: `تحديث ملف المريض: ${pat.name}`,
-      target: `مريض / ${pat.fileNumber}`,
-      ipAddress: '192.168.1.1',
-      status: 'نجاح'
-    });
-  };
-
-  const handleDeletePatient = async (id: string) => {
-    const target = patients.find(p => p.id === id);
-    await api.patients.delete(id);
-    setPatients(prev => prev.filter(p => p.id !== id));
-    await api.auditLogs.log({
-      actorName: 'مدير المنصة',
-      actorRole: 'admin',
-      action: `أرشفة وحذف ملف مريض: ${target?.name || id}`,
-      target: `مريض / ${id}`,
-      ipAddress: '192.168.1.1',
-      status: 'نجاح'
-    });
-  };
-
-  const handleUpdateAppointment = async (id: string, updated: Partial<Appointment>) => {
-    const appt = await api.appointments.update(id, updated);
-    setAppointments(prev => prev.map(a => a.id === id ? appt : a));
-    await api.auditLogs.log({
-      actorName: 'مدير المنصة',
-      actorRole: 'admin',
-      action: `تعديل حجز الجلسة للمريض: ${appt.patientName}`,
-      target: `حجز / ${id}`,
-      ipAddress: '192.168.1.1',
-      status: 'نجاح'
-    });
-  };
-
-  const handleDeleteAppointment = async (id: string) => {
-    await api.appointments.delete(id);
-    setAppointments(prev => prev.filter(a => a.id !== id));
-    await api.auditLogs.log({
-      actorName: 'مدير المنصة',
-      actorRole: 'admin',
-      action: `إلغاء وحذف موعد حجز: ${id}`,
-      target: `حجز / ${id}`,
-      ipAddress: '192.168.1.1',
-      status: 'نجاح'
-    });
-  };
-
-  const handleAddExercise = async (ex: Omit<TherapyExercise, 'id'>) => {
-    const created = await api.exercises.create(ex);
-    setExercises(prev => [created, ...prev]);
-    await api.auditLogs.log({
-      actorName: 'مدير المنصة',
-      actorRole: 'admin',
-      action: `إضافة تمرين سلوكي جديد: ${created.titleAr}`,
-      target: `تمرين / ${created.id}`,
-      ipAddress: '192.168.1.1',
-      status: 'نجاح'
-    });
-  };
-
-  const handleUpdateExercise = async (id: string, updated: Partial<TherapyExercise>) => {
-    const ex = await api.exercises.update(id, updated);
-    setExercises(prev => prev.map(e => e.id === id ? ex : e));
-  };
-
-  const handleDeleteExercise = async (id: string) => {
-    await api.exercises.delete(id);
-    setExercises(prev => prev.filter(e => e.id !== id));
+    setSelectedPatientForFile(patient);
   };
 
   const handleOpenScaleRunner = (scaleId?: string) => {
-    if (scaleId) setRunnerScaleId(scaleId);
+    setRunnerScaleId(scaleId || 'phq-9');
     setIsScaleRunnerModalOpen(true);
   };
 
@@ -377,162 +199,109 @@ export default function App() {
     setIsClinicalFormModalOpen(true);
   };
 
+  const handleMarkAllNotificationsRead = async () => {
+    await api.notifications.markAllAsRead();
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  };
+
   const handleSaveScaleResult = async (result: ScaleAssessmentResult) => {
-    const saved = await api.scales.saveResult(result);
-    setScaleResults([saved, ...scaleResults]);
-    
-    // update patient completed scales count
-    const updatedPatients = patients.map(p => {
+    await api.scales.saveResult(result);
+    setScaleResults([result, ...scaleResults]);
+
+    setPatients(prev => prev.map(p => {
       if (p.id === result.patientId) {
-        return {
-          ...p,
-          completedScalesCount: p.completedScalesCount + 1,
-          lastVisit: result.date
-        };
+        return { ...p, completedScalesCount: p.completedScalesCount + 1 };
       }
       return p;
-    });
-    setPatients(updatedPatients);
-    await api.patients.saveAll(updatedPatients);
+    }));
 
     await api.auditLogs.log({
-      actorName: activePortal === 'patient' ? activePatient.name : 'د. طارق الحكيم',
-      actorRole: activePortal === 'patient' ? 'مريض' : 'طبيب نفسي',
-      action: `إتمام مقياس ${result.scaleName} بدرجة ${result.totalScore}`,
-      target: `ملف ${activePatient.fileNumber}`,
-      ipAddress: '192.168.1.1',
+      actorName: currentStaff?.name || 'د. طارق الحكيم',
+      actorRole: currentStaff?.specialty || 'طبيب نفسي',
+      action: `إتمام وتصحيح ${result.scaleName}`,
+      target: `${result.patientName} (${result.totalScore} نقطة)`,
+      ipAddress: '192.168.1.15',
       status: 'نجاح'
     });
   };
 
   const handleSavePrescription = async (prescription: Prescription) => {
-    const saved = await api.prescriptions.create(prescription);
-    setPrescriptions([saved, ...prescriptions]);
-    
-    const updatedPatients = patients.map(p => {
+    await api.prescriptions.create(prescription);
+    setPrescriptions([prescription, ...prescriptions]);
+
+    setPatients(prev => prev.map(p => {
       if (p.id === prescription.patientId) {
-        return {
-          ...p,
-          activeMedsCount: prescription.items.length,
-          lastVisit: prescription.date
-        };
+        return { ...p, activeMedsCount: p.activeMedsCount + prescription.items.length };
       }
       return p;
-    });
-    setPatients(updatedPatients);
-    await api.patients.saveAll(updatedPatients);
+    }));
 
     await api.auditLogs.log({
-      actorName: prescription.doctorName,
+      actorName: currentStaff?.name || 'د. طارق الحكيم',
       actorRole: 'طبيب نفسي',
-      action: `إصدار وصفة دوائية (${prescription.items.length} أدوية)`,
-      target: `ملف ${prescription.patientName}`,
-      ipAddress: '192.168.1.45',
+      action: `إصدار وصفة طبية نفسية معتمدة رقم ${prescription.prescriptionNumber || prescription.id}`,
+      target: `${prescription.patientName} - ${prescription.diagnosis}`,
+      ipAddress: '192.168.1.15',
       status: 'نجاح'
     });
   };
 
-  const handleBookAppointment = async (aptData: Omit<Appointment, 'id'>) => {
-    const saved = await api.appointments.create(aptData);
-    setAppointments([saved, ...appointments]);
+  const handleRecordSaved = async (record: SavedClinicalRecord) => {
+    await api.auditLogs.log({
+      actorName: record.doctorName,
+      actorRole: 'توثيق إكلينيكي',
+      action: `اعتماد وحفظ نموذج ${record.titleAr} رقم ${record.recordNumber}`,
+      target: `${record.patientName} (${record.patientFileNumber})`,
+      ipAddress: '192.168.1.15',
+      status: 'نجاح'
+    });
+  };
 
-    // Send instant welcome & appointment confirmation message in doctor chat
-    const doctorChatMsg = {
-      senderId: saved.doctorId,
-      senderName: saved.doctorName,
-      senderRole: 'doctor' as const,
-      text: `أهلاً بك ${activePatient.name}، تم تأكيد موعد جلستنا يوم ${saved.date} في تمام الساعة ${saved.time} ${saved.type === 'جلسة عن بُعد (فيديو)' && saved.meetUrl ? `عبر Google Meet (${saved.meetUrl})` : 'في مقر العيادة'}. تم تسجيل حجزك وسأكون بانتظارك. يمكنك كتابة أي استفسارات أو تفاصيل تود مشاركتها مسبقاً هنا.`,
-      isRead: false
-    };
-    const savedMsg = await api.messages.send(doctorChatMsg);
-    setMessages(prev => prev.some(m => m.id === savedMsg.id) ? prev : [...prev, savedMsg]);
+  const handleBookAppointment = async (newApt: Appointment) => {
+    await api.appointments.create(newApt);
+    setAppointments([newApt, ...appointments]);
 
-    // Create real notifications for appointment & payment
-    const aptNotif = await api.notifications.add({
-      title: 'موعد استشارة مؤكد عبر Google Meet',
-      description: `تم تأكيد موعد جلستك مع ${saved.doctorName} يوم ${saved.date} الساعة ${saved.time} بنجاح.`,
+    const notif = await api.notifications.add({
+      title: 'تم تأكيد حجز موعد استشارة جديد',
+      description: `تم حجز موعد مع ${newApt.doctorName} بتاريخ ${newApt.date} الساعة ${newApt.time}`,
       type: 'appointment',
       isRead: false,
-      meetUrl: saved.meetUrl
+      meetUrl: newApt.meetUrl
     });
 
-    const payNotif = await api.notifications.add({
-      title: `إيصال سداد إلكتروني (${saved.paymentMethod || 'PayPal'})`,
-      description: `تم سداد رسوم الاستشارة (${saved.amountSAR || 350} ر.س) بنجاح برقم المعاملة ${saved.transactionId || 'TXN-CONFIRMED'}.`,
-      type: 'payment',
-      isRead: false
-    });
-
-    setNotifications(prev => {
-      const existing = new Set(prev.map(n => n.id));
-      const toAdd = [aptNotif, payNotif].filter(n => !existing.has(n.id));
-      return [...toAdd, ...prev];
-    });
+    setNotifications(prev => [notif, ...prev]);
 
     await api.auditLogs.log({
-      actorName: 'نظام الدفع والمواعيد (' + (saved.paymentMethod || 'PayPal') + ')',
-      actorRole: 'نظام إلكتروني',
-      action: `سداد حجز استشارة إلكترونية (${saved.amountSAR || 350} ر.س) وتوليد رابط Google Meet وإشعار الطبيب ${saved.doctorName} بالساعات المتاحة`,
-      target: `${saved.date} الساعة ${saved.time}`,
-      ipAddress: '176.44.201.88',
+      actorName: newApt.patientName,
+      actorRole: 'مريض',
+      action: `حجز موعد استشارة وسداد إلكتروني (${newApt.paymentMethod})`,
+      target: `${newApt.doctorName} - ${newApt.date}`,
+      ipAddress: '192.168.1.100',
       status: 'نجاح'
     });
   };
 
-  const handleSendMessage = async (text: string, targetDoctorId?: string) => {
-    const docId = targetDoctorId || 'doc-1';
-    const targetDoc = doctors.find(d => d.id === docId) || doctors[0];
+  const handleSendMessage = async (text: string, overridePatientId?: string) => {
+    const pId = overridePatientId || activePatient.id;
+    const isDoctorSender = activePortal === 'doctor';
+    
+    const senderRole = isDoctorSender ? 'doctor' : 'patient';
+    const senderName = isDoctorSender 
+      ? (currentStaff?.name || 'د. طارق الحكيم') 
+      : activePatient.name;
 
-    const saved = await api.messages.send({
-      senderId: activePortal === 'patient' ? activePatient.id : targetDoc.id,
-      senderName: activePortal === 'patient' ? activePatient.name : targetDoc.name,
-      senderRole: activePortal === 'patient' ? 'patient' : 'doctor',
-      doctorId: targetDoc.id,
-      doctorName: targetDoc.name,
-      patientId: activePatient.id,
+    const newMsg = await api.messages.send({
+      senderId: isDoctorSender ? (currentStaff?.doctorId || 'doc-hakim') : pId,
+      senderName,
+      senderRole,
+      doctorId: currentStaff?.doctorId || 'doc-hakim',
+      doctorName: currentStaff?.name || 'د. طارق الحكيم',
+      patientId: pId,
       text,
-      isRead: true
+      isRead: isDoctorSender
     });
-    setMessages(prev => prev.some(m => m.id === saved.id) ? prev : [...prev, saved]);
 
-    // If patient sent message, simulate doctor reply after 1.2 seconds for interactive realistic chat
-    if (activePortal === 'patient') {
-      setTimeout(async () => {
-        let doctorReplyText = `أهلاً بك يا ${activePatient.name}، قرأت استفسارك بعناية وسأتابعه معك في جلستنا المجدولة.`;
-        if (targetDoc.id === 'doc-1') {
-          doctorReplyText = `أهلاً بك يا ${activePatient.name}، تابعت ملاحظتك حول الأدوية والأعراض الإكلينيكية. استمري على الخطة الدوائية المعتمدة وسنراجع مقاييس التحسن في موعدنا القادم عبر Google Meet.`;
-        } else if (targetDoc.id === 'doc-2') {
-          doctorReplyText = `مرحباً ${activePatient.name}، أحسنتِ بملاحظة الفكرة المشوهة وتدوينها. تذكري تطبيق أسلوب إعادة الصياغة المعرفية وكتابة الفكرة البديلة المنطقية وسنناقشها في الجلسة.`;
-        } else if (targetDoc.id === 'doc-3') {
-          doctorReplyText = `أهلاً ${activePatient.name}، تعديل النظام الغذائي لدعم محور الأمعاء-الدماغ يحتاج لبعض التدرج لبناء مستويات السيروتونين الطبيعي وتخفيف الإجهاد العصبي. سنراجع النتائج سوياً.`;
-        } else if (targetDoc.id === 'doc-4') {
-          doctorReplyText = `مرحباً ${activePatient.name}، دعم المحيط الأسري والتوازن البيئي خطوة جوهرية في استدامة رحلة تعافيك. فريقنا الاستشاري متواجد لمساندتك دائماً.`;
-        }
-
-        const docReply = await api.messages.send({
-          senderId: targetDoc.id,
-          senderName: targetDoc.name,
-          senderRole: 'doctor',
-          doctorId: targetDoc.id,
-          doctorName: targetDoc.name,
-          patientId: activePatient.id,
-          text: doctorReplyText,
-          isRead: false
-        });
-        setMessages(prev => prev.some(m => m.id === docReply.id) ? prev : [...prev, docReply]);
-
-        const chatNotif = await api.notifications.add({
-          title: `رسالة جديدة من ${targetDoc.name}`,
-          description: doctorReplyText.substring(0, 80) + '...',
-          type: 'chat',
-          isRead: false
-        });
-        setNotifications(prev => {
-          if (prev.some(n => n.id === chatNotif.id)) return prev;
-          return [chatNotif, ...prev];
-        });
-      }, 1200);
-    }
+    setMessages(prev => [...prev, newMsg]);
   };
 
   const handleToggleExercise = async (id: string) => {
@@ -540,43 +309,97 @@ export default function App() {
     setExercises(updated);
   };
 
-  const handleAddNewDoctor = async (doc: Omit<Doctor, 'id'>) => {
-    const newDoc = await api.doctors.create(doc);
-    setDoctors([newDoc, ...doctors]);
-    await api.auditLogs.log({
-      actorName: 'مدير المنصة',
-      actorRole: 'إدارة',
-      action: `إضافة حساب ممارس جديد: ${newDoc.name}`,
-      target: newDoc.licenseNumber,
-      ipAddress: '192.168.1.10',
-      status: 'نجاح'
-    });
-  };
-
-  const handleAddNewPatient = async (patientData: Omit<Patient, 'id'>) => {
-    const newPat = await api.patients.create(patientData);
-    setPatients([newPat, ...patients]);
-    await api.auditLogs.log({
-      actorName: 'مدير المنصة',
-      actorRole: 'إدارة',
-      action: `فتح ملف مريض جديد: ${newPat.name}`,
-      target: newPat.fileNumber,
-      ipAddress: '192.168.1.10',
-      status: 'نجاح'
-    });
-  };
-
-  const handleUpdateAppointmentStatus = async (id: string, status: Appointment['status']) => {
+  const handleUpdateAppointmentStatus = async (id: string, status: Appointment['status'], notes?: string) => {
     await api.appointments.updateStatus(id, status);
-    setAppointments(prev => prev.map(a => a.id === id ? { ...a, status } : a));
+    setAppointments(prev => prev.map(a => a.id === id ? { ...a, status, notes: notes || a.notes } : a));
+    
     await api.auditLogs.log({
-      actorName: 'الطبيب المعالج',
-      actorRole: 'طبيب',
-      action: `تحديث حالة موعد الجلسة الإكلينيكية إلى: ${status}`,
+      actorName: currentStaff?.name || 'د. طارق الحكيم',
+      actorRole: 'المختص المعالج',
+      action: `تحديث حالة موعد الجلسة الإكلينيكية إلى: ${status} (${notes || ''})`,
       target: `جلسة ${id}`,
       ipAddress: '192.168.1.15',
       status: 'نجاح'
     });
+  };
+
+  // Admin handlers
+  const handleAddNewDoctor = async (doc: Omit<Doctor, 'id'>) => {
+    const newDoc = await api.doctors.create(doc);
+    setDoctors([newDoc, ...doctors]);
+  };
+  const handleUpdateDoctor = async (doc: Doctor) => {
+    const updated = await api.doctors.update(doc);
+    setDoctors(updated);
+  };
+  const handleDeleteDoctor = async (id: string) => {
+    const updated = await api.doctors.delete(id);
+    setDoctors(updated);
+  };
+
+  const handleAddNewPatient = async (pData: Omit<Patient, 'id'>) => {
+    const newPat = await api.patients.create(pData);
+    setPatients([newPat, ...patients]);
+  };
+  const handleUpdatePatient = async (p: Patient) => {
+    const updated = await api.patients.update(p);
+    setPatients(updated);
+  };
+  const handleDeletePatient = async (id: string) => {
+    const updated = await api.patients.delete(id);
+    setPatients(updated);
+  };
+
+  const handleUpdateAppointment = async (apt: Appointment) => {
+    const updated = await api.appointments.update(apt);
+    setAppointments(updated);
+  };
+  const handleDeleteAppointment = async (id: string) => {
+    const updated = await api.appointments.delete(id);
+    setAppointments(updated);
+  };
+
+  const handleAddExercise = async (ex: Omit<TherapyExercise, 'id'>) => {
+    const updated = await api.exercises.create(ex);
+    setExercises(updated);
+  };
+  const handleUpdateExercise = async (ex: TherapyExercise) => {
+    const updated = await api.exercises.update(ex);
+    setExercises(updated);
+  };
+  const handleDeleteExercise = async (id: string) => {
+    const updated = await api.exercises.delete(id);
+    setExercises(updated);
+  };
+
+  const handleUpdateSettings = async (sets: ClinicSettings) => {
+    const updated = await api.settings.update(sets);
+    setClinicSettings(updated);
+  };
+  const handleResetSettings = async () => {
+    const res = await api.settings.reset();
+    setClinicSettings(res);
+  };
+
+  const handleCreateDepartment = async (dept: Omit<Department, 'id'>) => {
+    const updated = await api.departments.create(dept);
+    setDepartments(updated);
+  };
+  const handleUpdateDepartment = async (dept: Department) => {
+    const updated = await api.departments.update(dept);
+    setDepartments(updated);
+  };
+  const handleDeleteDepartment = async (id: string) => {
+    const updated = await api.departments.delete(id);
+    setDepartments(updated);
+  };
+  const handleResetDepartments = async () => {
+    const res = await api.departments.reset();
+    setDepartments(res);
+  };
+  const handleOpenDepartmentManager = (dept?: Department) => {
+    setDepartmentToEdit(dept || null);
+    setIsDepartmentModalOpen(true);
   };
 
   const pendingRiskCount = patients.filter(p => p.riskLevel === 'حرج' || p.riskLevel === 'مرتفع').length;
@@ -587,7 +410,7 @@ export default function App() {
       {/* Top Application Header */}
       <Header
         currentRole={currentRole}
-        setCurrentRole={setCurrentRole}
+        setCurrentRole={() => setIsStaffAuthModalOpen(true)}
         activePortal={activePortal}
         setActivePortal={setActivePortal}
         theme={theme}
@@ -597,12 +420,20 @@ export default function App() {
         notifications={notifications}
         onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
         onOpenChat={() => {
-          setActivePortal('patient');
-          setPatientTab('messages');
+          if (activePortal === 'doctor') {
+            setCurrentTab('chats');
+          } else {
+            setActivePortal('patient');
+            setPatientTab('messages');
+          }
         }}
         onOpenAppointments={() => {
-          setActivePortal('patient');
-          setPatientTab('appointments');
+          if (activePortal === 'doctor') {
+            setCurrentTab('appointments');
+          } else {
+            setActivePortal('patient');
+            setPatientTab('appointments');
+          }
         }}
         onSelectPatient={handleSelectPatient}
         onOpenOverview={() => setIsOverviewModalOpen(true)}
@@ -610,7 +441,7 @@ export default function App() {
         onOpenNewPrescription={() => setIsPrescriptionModalOpen(true)}
       />
 
-      {/* Dynamic Announcement Banner from Clinic Settings */}
+      {/* Dynamic Announcement Banner */}
       {clinicSettings.showAnnouncementBanner && clinicSettings.announcementText && (
         <div className={`w-full py-2 px-4 text-xs font-bold text-center border-b transition-colors flex items-center justify-center gap-2 ${
           clinicSettings.announcementType === 'warning'
@@ -624,21 +455,85 @@ export default function App() {
         </div>
       )}
 
-      {/* Portal Switcher Banner for Quick Access */}
+      {/* Portal Switcher Banner */}
       <PortalSwitcherBanner
         activePortal={activePortal}
         setActivePortal={setActivePortal}
       />
 
+      {/* Doctor Workspace Top Staff Strip (OBS-D-002, ADD-D-007) */}
+      {activePortal === 'doctor' && (
+        <div className="bg-slate-900 text-white border-b border-teal-900/40 px-4 py-2.5">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            
+            <div className="flex items-center gap-3">
+              <img
+                src={currentStaff?.avatar || 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&auto=format&fit=crop&q=80'}
+                alt={currentStaff?.name || 'طبيب'}
+                className="w-8 h-8 rounded-xl object-cover border border-teal-500/40 shrink-0"
+              />
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <strong className="font-bold text-white text-xs truncate">
+                    {currentStaff?.name || 'د. طارق الحكيم'}
+                  </strong>
+                  <span className="px-2 py-0.5 rounded-full bg-teal-900 text-teal-300 font-mono font-bold text-[10px] border border-teal-700">
+                    {currentStaff?.licenseNumber || 'MD-PSY-98442'}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-400 truncate">
+                  {currentStaff?.specialty || 'استشاري أول الطب النفسي'} · جلسة مشفرة ومحمية
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  const newStatus = staffAuthService.toggleOnDuty(currentStaff?.doctorId || 'doc-hakim');
+                  alert(newStatus ? 'تم تفعيل وضع المناوبة الفورية لاستقبال الحالات العاجلة ✓' : 'تم إيقاف المناوبة الفورية.');
+                }}
+                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                title="تفعيل وضع الاستشارات الفورية العاجلة"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>مناوب الآن</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsStaffAuthModalOpen(true)}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-700 cursor-pointer"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-teal-400" />
+                <span>تبديل حساب المختص</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsJoinTeamModalOpen(true)}
+                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <Award className="w-3.5 h-3.5" />
+                <span>انضم لفريقنا</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {/* Main Container Area */}
       <div className="flex-1 flex flex-col md:flex-row max-w-7xl w-full mx-auto overflow-hidden">
         
-        {/* If Active Portal is DOCTOR: Show Clinical Workspace Sidebar */}
+        {/* If Active Portal is DOCTOR: Show Workspace Sidebar */}
         {activePortal === 'doctor' && (
           <Sidebar
             currentTab={currentTab}
             setCurrentTab={setCurrentTab}
             currentRole={currentRole}
+            currentStaff={currentStaff}
             pendingRiskCount={pendingRiskCount}
           />
         )}
@@ -720,6 +615,61 @@ export default function App() {
                   onOpenOverviewModal={() => setIsOverviewModalOpen(true)}
                   onNavigateTab={(tab) => setCurrentTab(tab)}
                   currentRole={currentRole}
+                  currentStaff={currentStaff}
+                  onOpenPatientFileModal={(p) => {
+                    setSelectedPatientForFile(p);
+                    setIsPatientFileModalOpen(true);
+                  }}
+                  onOpenSendScaleModal={(p) => {
+                    handleSelectPatient(p);
+                    handleOpenScaleRunner('phq-9');
+                  }}
+                  onOpenChatWithPatient={(p) => {
+                    handleSelectPatient(p);
+                    setCurrentTab('chats');
+                  }}
+                />
+              )}
+
+              {currentTab === 'appointments' && (
+                <DoctorAppointmentsTab
+                  appointments={appointments}
+                  patients={patients}
+                  currentStaff={currentStaff}
+                  onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
+                  onSelectPatient={handleSelectPatient}
+                  onOpenChatWithPatient={(p) => {
+                    handleSelectPatient(p);
+                    setCurrentTab('chats');
+                  }}
+                />
+              )}
+
+              {currentTab === 'chats' && (
+                <DoctorChatsTab
+                  patients={patients}
+                  activePatient={activePatient}
+                  onSelectPatient={handleSelectPatient}
+                  messages={messages}
+                  onSendMessage={handleSendMessage}
+                  currentStaff={currentStaff}
+                  onOpenSendScaleModal={(p) => {
+                    handleSelectPatient(p);
+                    handleOpenScaleRunner('phq-9');
+                  }}
+                  onOpenSendExerciseModal={(p) => {
+                    handleSelectPatient(p);
+                    alert(`تم إسناد تمرين معرفي سلوكي للمريض ${p.name} بنجاح.`);
+                  }}
+                />
+              )}
+
+              {currentTab === 'schedule' && (
+                <DoctorScheduleTab
+                  currentStaff={currentStaff}
+                  onScheduleUpdated={() => {
+                    alert('تم تحديث جدول أوقاتك في نظام الحجز بنجاح.');
+                  }}
                 />
               )}
 
@@ -743,6 +693,8 @@ export default function App() {
                   prescriptions={prescriptions}
                   activePatient={activePatient}
                   onOpenNewPrescription={() => setIsPrescriptionModalOpen(true)}
+                  currentRole={currentRole}
+                  currentStaff={currentStaff}
                 />
               )}
 
@@ -750,12 +702,35 @@ export default function App() {
                 <ClinicalFormsView
                   activePatient={activePatient}
                   onOpenClinicalForm={handleOpenClinicalForm}
+                  currentStaff={currentStaff}
+                />
+              )}
+
+              {currentTab === 'reports' && (
+                <DoctorReportsTab
+                  currentStaff={currentStaff}
+                  patients={patients}
+                  activePatient={activePatient}
+                />
+              )}
+
+              {currentTab === 'peer_consult' && (
+                <DoctorPeerConsultationsTab
+                  currentStaff={currentStaff}
+                  patients={patients}
+                />
+              )}
+
+              {currentTab === 'financials' && (
+                <DoctorFinancialsTab
+                  currentStaff={currentStaff}
                 />
               )}
 
               {currentTab === 'nutrition_social' && (
                 <NutritionSocialView
                   activePatient={activePatient}
+                  currentStaff={currentStaff}
                 />
               )}
 
@@ -766,7 +741,13 @@ export default function App() {
               {currentTab === 'access_control' && (
                 <AccessControlView
                   currentRole={currentRole}
-                  setCurrentRole={setCurrentRole}
+                  setCurrentRole={(r) => {
+                    if (currentStaff) {
+                      setCurrentStaff({ ...currentStaff, role: r });
+                    }
+                  }}
+                  auditLogs={auditLogs}
+                  currentStaff={currentStaff}
                 />
               )}
             </div>
@@ -827,6 +808,32 @@ export default function App() {
       />
 
       {/* Modals & Dialogs */}
+      <StaffAuthModal
+        isOpen={isStaffAuthModalOpen}
+        onClose={() => setIsStaffAuthModalOpen(false)}
+        currentStaff={currentStaff}
+        onStaffLogin={(user) => {
+          setCurrentStaff(user);
+        }}
+        onOpenJoinTeamModal={() => setIsJoinTeamModalOpen(true)}
+      />
+
+      <JoinTeamModal
+        isOpen={isJoinTeamModalOpen}
+        onClose={() => setIsJoinTeamModalOpen(false)}
+      />
+
+      <DoctorPatientFileModal
+        isOpen={isPatientFileModalOpen}
+        onClose={() => setIsPatientFileModalOpen(false)}
+        patient={selectedPatientForFile}
+        scaleResults={scaleResults}
+        prescriptions={prescriptions}
+        onOpenNewSOAP={() => handleOpenClinicalForm('soap_note')}
+        onOpenNewScale={() => handleOpenScaleRunner('phq-9')}
+        onOpenNewRx={() => setIsPrescriptionModalOpen(true)}
+      />
+
       <DepartmentManagementModal
         isOpen={isDepartmentModalOpen}
         onClose={() => {
@@ -867,6 +874,7 @@ export default function App() {
           setSelectedPrescriptionForView(null);
         }}
         activePatient={activePatient}
+        currentStaff={currentStaff}
         onSavePrescription={handleSavePrescription}
       />
 
@@ -875,6 +883,8 @@ export default function App() {
         onClose={() => setIsClinicalFormModalOpen(false)}
         activePatient={activePatient}
         formType={clinicalFormType}
+        currentStaff={currentStaff}
+        onRecordSaved={handleRecordSaved}
       />
 
       <ClientBookingFlowModal

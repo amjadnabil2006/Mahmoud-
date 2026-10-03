@@ -1,6 +1,54 @@
-export type UserRole = 'psychiatrist' | 'psychologist' | 'nutritionist' | 'social_worker' | 'admin';
+export type UserRole = 
+  | 'psychiatrist' 
+  | 'psychologist' 
+  | 'nutritionist' 
+  | 'social_worker' 
+  | 'admin' 
+  | 'reception' 
+  | 'support' 
+  | 'supervisor';
+
 export type PortalType = 'patient' | 'doctor' | 'admin';
 export type ThemeMode = 'light' | 'dark';
+
+export interface StaffUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  doctorId: string;
+  licenseNumber: string;
+  specialty: string;
+  avatar: string;
+  departmentId: string;
+  isLicensed: boolean;
+  token?: string;
+  lastActive: string;
+}
+
+export interface PatientAllergy {
+  id: string;
+  substance: string;
+  severity: 'خفيفة' | 'متوسطة' | 'شديدة ومهددة للحياة';
+  reaction: string;
+}
+
+export interface PatientVital {
+  date: string;
+  weightKg: number;
+  bloodPressure: string;
+  heartRate: number;
+  fastingGlucoseMgDl?: number;
+  notes?: string;
+}
+
+export interface TreatmentGoal {
+  id: string;
+  title: string;
+  targetDate: string;
+  status: 'قيد العمل' | 'مكتمل' | 'معلق';
+  category: 'CBT' | 'نمط حياة' | 'دوائي' | 'علاقات';
+}
 
 export interface Patient {
   id: string;
@@ -11,13 +59,109 @@ export interface Patient {
   phone: string;
   email?: string;
   primaryDiagnosis?: string;
+  icd10Code?: string;
   riskLevel: 'منخفض' | 'متوسط' | 'مرتفع' | 'حرج';
   lastVisit: string;
   assignedDoctor: string;
   assignedDoctorId?: string;
   activeMedsCount: number;
   completedScalesCount: number;
-  status: 'نشط' | 'مستقر' | 'قيد المتابعة المكثفة' | 'مكتمل';
+  status: 'نشط' | 'مستقر' | 'قيد المتابعة المكثفة' | 'مكتمل' | 'منقطع' | 'محول';
+  allergies?: PatientAllergy[];
+  chronicConditions?: string[];
+  currentMedications?: string[];
+  vitalsHistory?: PatientVital[];
+  treatmentGoals?: TreatmentGoal[];
+  socialHistory?: string;
+  medicalHistory?: string;
+}
+
+export interface SavedClinicalRecord {
+  id: string;
+  recordNumber: string;
+  patientId: string;
+  patientName: string;
+  patientFileNumber: string;
+  doctorId: string;
+  doctorName: string;
+  doctorLicenseNumber: string;
+  formType: 'mse' | 'suicide_risk' | 'soap_note' | 'nutrition_plan' | 'social_assessment' | 'medical_report';
+  titleAr: string;
+  date: string;
+  status: 'مسودة' | 'معتمد وموقع سريرياً';
+  formData: Record<string, any>;
+  summaryText?: string;
+  emergencyEscalated?: boolean;
+  signatureText?: string;
+  verifiedStamp?: boolean;
+}
+
+export interface DoctorSchedule {
+  doctorId: string;
+  availableDays: string[];
+  timeSlots: string[];
+  dailyCapacity: number;
+  weeklyCapacity: number;
+  sessionDurationMinutes: number;
+  bufferMinutes: number;
+  advanceNoticeHours: number;
+  maxBookingDaysInAdvance: number;
+  vacationDates: string[];
+  timezone: string;
+  onDutyNow: boolean;
+  onDutyStartedAt?: string;
+}
+
+export interface PeerConsultation {
+  id: string;
+  title: string;
+  anonymousPatientAge: number;
+  anonymousPatientGender: 'ذكر' | 'أنثى';
+  category: string;
+  description: string;
+  authorDoctorId: string;
+  authorDoctorName: string;
+  createdAt: string;
+  replies: {
+    id: string;
+    doctorName: string;
+    doctorSpecialty: string;
+    text: string;
+    timestamp: string;
+  }[];
+}
+
+export interface DoctorReferral {
+  id: string;
+  patientId: string;
+  patientName: string;
+  fromDoctorId: string;
+  fromDoctorName: string;
+  toDoctorId: string;
+  toDoctorName: string;
+  toSpecialty: string;
+  reason: string;
+  urgency: 'عاجل' | 'روتيني';
+  date: string;
+  status: 'قيد المراجعة' | 'مقبول' | 'مكتمل';
+}
+
+export interface MedicalReport {
+  id: string;
+  reportNumber: string;
+  patientId: string;
+  patientName: string;
+  patientFileNumber: string;
+  doctorId: string;
+  doctorName: string;
+  type: 'تقرير طبي نفسي' | 'إجازة مرضية معتمدة' | 'خطاب تحويل استشاري' | 'إقرار وموافقة مستنيرة';
+  date: string;
+  validUntil?: string;
+  daysGranted?: number;
+  diagnosis: string;
+  clinicalSummary: string;
+  recommendations: string;
+  isOfficialStamped: boolean;
 }
 
 export type { Department } from '../data/departments';
@@ -349,16 +493,22 @@ export interface PrescriptionItem {
 
 export interface Prescription {
   id: string;
+  prescriptionNumber?: string;
   patientId: string;
   patientName: string;
   patientAge: number;
   fileNumber: string;
   date: string;
   diagnosis: string;
+  icd10Code?: string;
   items: PrescriptionItem[];
   specialInstructions: string;
+  doctorId?: string;
   doctorName: string;
   licenseNumber: string;
+  doctorSignature?: string;
+  isOfficialStamped?: boolean;
+  status?: 'نشطة' | 'مكتملة' | 'موقوفة' | 'مجددة';
 }
 
 export interface DisorderInfo {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   ShieldCheck, 
   Lock, 
@@ -9,16 +9,29 @@ import {
   Check, 
   X,
   AlertTriangle,
-  History
+  History,
+  Search,
+  Filter,
+  Users,
+  Clock
 } from 'lucide-react';
-import { UserRole } from '../types';
+import { UserRole, AuditLog, StaffUser } from '../types';
 
 interface Props {
   currentRole: UserRole;
   setCurrentRole: (role: UserRole) => void;
+  auditLogs?: AuditLog[];
+  currentStaff?: StaffUser | null;
 }
 
-export const AccessControlView: React.FC<Props> = ({ currentRole, setCurrentRole }) => {
+export const AccessControlView: React.FC<Props> = ({ 
+  currentRole, 
+  setCurrentRole, 
+  auditLogs = [],
+  currentStaff
+}) => {
+  const [logSearchQuery, setLogSearchQuery] = useState('');
+
   const permissionsMatrix = [
     {
       feature: 'عرض السجلات والبيانات الديموغرافية',
@@ -26,6 +39,8 @@ export const AccessControlView: React.FC<Props> = ({ currentRole, setCurrentRole
       psychologist: true,
       nutritionist: true,
       social_worker: true,
+      supervisor: true,
+      reception: false,
       admin: true
     },
     {
@@ -34,6 +49,8 @@ export const AccessControlView: React.FC<Props> = ({ currentRole, setCurrentRole
       psychologist: false,
       nutritionist: false,
       social_worker: false,
+      supervisor: false,
+      reception: false,
       admin: false
     },
     {
@@ -42,6 +59,8 @@ export const AccessControlView: React.FC<Props> = ({ currentRole, setCurrentRole
       psychologist: true,
       nutritionist: false,
       social_worker: false,
+      supervisor: true,
+      reception: false,
       admin: false
     },
     {
@@ -50,6 +69,8 @@ export const AccessControlView: React.FC<Props> = ({ currentRole, setCurrentRole
       psychologist: true,
       nutritionist: false,
       social_worker: false,
+      supervisor: true,
+      reception: false,
       admin: false
     },
     {
@@ -58,6 +79,8 @@ export const AccessControlView: React.FC<Props> = ({ currentRole, setCurrentRole
       psychologist: true,
       nutritionist: false,
       social_worker: true,
+      supervisor: true,
+      reception: false,
       admin: false
     },
     {
@@ -66,6 +89,8 @@ export const AccessControlView: React.FC<Props> = ({ currentRole, setCurrentRole
       psychologist: false,
       nutritionist: true,
       social_worker: false,
+      supervisor: true,
+      reception: false,
       admin: false
     },
     {
@@ -74,7 +99,29 @@ export const AccessControlView: React.FC<Props> = ({ currentRole, setCurrentRole
       psychologist: true,
       nutritionist: false,
       social_worker: true,
+      supervisor: true,
+      reception: false,
       admin: false
+    },
+    {
+      feature: 'إدارة وتأكيد مواعيد الحجوزات اليومية',
+      psychiatrist: true,
+      psychologist: true,
+      nutritionist: true,
+      social_worker: true,
+      supervisor: true,
+      reception: true,
+      admin: true
+    },
+    {
+      feature: 'مراجعة واعتماد الجودة وسجلات الإشراف',
+      psychiatrist: false,
+      psychologist: false,
+      nutritionist: false,
+      social_worker: false,
+      supervisor: true,
+      reception: false,
+      admin: true
     },
     {
       feature: 'إدارة حسابات الفريق وسجلات التدقيق (Audit Logs)',
@@ -82,9 +129,17 @@ export const AccessControlView: React.FC<Props> = ({ currentRole, setCurrentRole
       psychologist: false,
       nutritionist: false,
       social_worker: false,
+      supervisor: false,
+      reception: false,
       admin: true
     }
   ];
+
+  const filteredLogs = auditLogs.filter(log => 
+    log.actorName.toLowerCase().includes(logSearchQuery.toLowerCase()) ||
+    log.action.toLowerCase().includes(logSearchQuery.toLowerCase()) ||
+    log.target.toLowerCase().includes(logSearchQuery.toLowerCase())
+  );
 
   return (
     <div className="space-y-6 text-right">
@@ -95,169 +150,117 @@ export const AccessControlView: React.FC<Props> = ({ currentRole, setCurrentRole
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-900 dark:bg-slate-800 text-teal-300 font-bold font-mono">
-                HIPAA / GDPR Ready
+                HIPAA / RBAC Ready
               </span>
-              <span className="text-xs text-slate-400 dark:text-slate-500">نظام التحكم بالوصول والسرية الطبية الفائقة</span>
+              <span className="text-xs text-slate-400 dark:text-slate-500">نظام التحكم بالوصول والسرية والتدقيق السريري</span>
             </div>
             <h1 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-              إدارة الصلاحيات والأمان والسرية الطبية (RBAC)
+              مصفوفة الصلاحيات وسجلات التدقيق (Audit Trail)
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              حماية خصوصية ملفات المرضى النفسيين وتطبيق مبدأ الحد الأدنى من الإفصاح الضروري (Need-to-Know Principle).
+              عزل الأدوار السريرية والوصفات الدوائية، توثيق كل عملية وصول وحفظ وطباعة بالفاعل الحقيقي والزمن.
             </p>
           </div>
 
-          <div className="text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3.5 py-2 rounded-xl flex items-center gap-2">
-            <Lock className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-            <span>التشفير المحلي للبيانات: <strong className="text-emerald-700 dark:text-emerald-400">مفعل (AES-256)</strong></span>
+          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+            <span className="text-slate-500">المستخدم النشط:</span>
+            <strong className="text-teal-700 dark:text-teal-400">{currentStaff?.name || 'د. طارق الحكيم'}</strong>
+            <span className="font-mono text-[10px] text-slate-400">({currentRole})</span>
           </div>
         </div>
       </div>
 
-      {/* Role Switcher Sandbox for Testing */}
-      <div className="bg-slate-900 dark:bg-slate-900 text-white rounded-2xl p-5 shadow-sm space-y-3 border border-slate-800">
-        <div className="flex items-center justify-between">
+      {/* Permissions Matrix */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xs overflow-x-auto space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+            <KeyRound className="w-4 h-4 text-teal-600" />
+            <span>مصفوفة الصلاحيات المهنية المعتمدة (RBAC Matrix)</span>
+          </h3>
+          <span className="text-xs text-slate-400">تُطبق برمجياً وتمنع أي وصول غير مصرح</span>
+        </div>
+
+        <table className="w-full text-right text-xs">
+          <thead>
+            <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 text-slate-700 dark:text-slate-300">
+              <th className="p-3 font-bold">الميزة السريرية / الصلاحية</th>
+              <th className="p-3 text-center font-bold">طبيب نفسي</th>
+              <th className="p-3 text-center font-bold">أخصائي نفسي</th>
+              <th className="p-3 text-center font-bold">أخصائي تغذية</th>
+              <th className="p-3 text-center font-bold">خدمة اجتماعية</th>
+              <th className="p-3 text-center font-bold">مشرف إكلينيكي</th>
+              <th className="p-3 text-center font-bold">استقبال</th>
+              <th className="p-3 text-center font-bold">مدير العيادة</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            {permissionsMatrix.map((row, idx) => (
+              <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-850/50">
+                <td className="p-3 font-medium text-slate-800 dark:text-slate-200">{row.feature}</td>
+                <td className="p-3 text-center">{row.psychiatrist ? <Check className="w-4 h-4 text-emerald-500 mx-auto" /> : <X className="w-4 h-4 text-slate-300 dark:text-slate-600 mx-auto" />}</td>
+                <td className="p-3 text-center">{row.psychologist ? <Check className="w-4 h-4 text-emerald-500 mx-auto" /> : <X className="w-4 h-4 text-slate-300 dark:text-slate-600 mx-auto" />}</td>
+                <td className="p-3 text-center">{row.nutritionist ? <Check className="w-4 h-4 text-emerald-500 mx-auto" /> : <X className="w-4 h-4 text-slate-300 dark:text-slate-600 mx-auto" />}</td>
+                <td className="p-3 text-center">{row.social_worker ? <Check className="w-4 h-4 text-emerald-500 mx-auto" /> : <X className="w-4 h-4 text-slate-300 dark:text-slate-600 mx-auto" />}</td>
+                <td className="p-3 text-center">{row.supervisor ? <Check className="w-4 h-4 text-emerald-500 mx-auto" /> : <X className="w-4 h-4 text-slate-300 dark:text-slate-600 mx-auto" />}</td>
+                <td className="p-3 text-center">{row.reception ? <Check className="w-4 h-4 text-emerald-500 mx-auto" /> : <X className="w-4 h-4 text-slate-300 dark:text-slate-600 mx-auto" />}</td>
+                <td className="p-3 text-center">{row.admin ? <Check className="w-4 h-4 text-emerald-500 mx-auto" /> : <X className="w-4 h-4 text-slate-300 dark:text-slate-600 mx-auto" />}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Audit Trail Section */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2">
-            <KeyRound className="w-5 h-5 text-teal-400" />
-            <h2 className="font-bold text-sm">اختبار وتجربة الأدوار الوظيفية (Role Switcher)</h2>
+            <History className="w-4 h-4 text-teal-600" />
+            <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+              سجل التدقيق الأمني والسريري المباشر (Immutable Audit Trail)
+            </h3>
           </div>
-          <span className="text-xs text-teal-300 font-mono">الدور الحالي: {currentRole}</span>
-        </div>
-        <p className="text-xs text-slate-300">
-          اختر دوراً لتجربة كيف تتكيف المنصة وشاشاتها فورياً حسب صلاحيات الممارس الصحي:
-        </p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
-          {[
-            { id: 'psychiatrist', label: 'طبيب نفسي' },
-            { id: 'psychologist', label: 'أخصائي نفسي' },
-            { id: 'nutritionist', label: 'أخصائي تغذية' },
-            { id: 'social_worker', label: 'أخصائي اجتماعي' },
-            { id: 'admin', label: 'إدارة العيادة' }
-          ].map(r => (
-            <button
-              key={r.id}
-              onClick={() => setCurrentRole(r.id as UserRole)}
-              className={`p-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                currentRole === r.id
-                  ? 'bg-teal-500 text-slate-950 font-black shadow-sm'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-              }`}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Permissions Matrix Table */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xs space-y-4 transition-colors">
-        <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
-          <h2 className="font-bold text-slate-900 dark:text-white text-base">
-            مصفوفة الصلاحيات السريرية والإدارية (Access Control Matrix)
-          </h2>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-            توزيع الصلاحيات وفق المعايير الطبية الدولية لتفادي تداخل الاختصاصات
-          </p>
+          <div className="relative w-full sm:w-64">
+            <input
+              type="text"
+              value={logSearchQuery}
+              onChange={(e) => setLogSearchQuery(e.target.value)}
+              placeholder="بحث في الأحداث أو الفاعلين..."
+              className="w-full pl-3 pr-8 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden"
+            />
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2.5" />
+          </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-xs text-right">
-            <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
-              <tr>
-                <th className="p-3">الوظيفة / الإجراء السريري</th>
-                <th className="p-3 text-center">طبيب نفسي</th>
-                <th className="p-3 text-center">معالج نفسي</th>
-                <th className="p-3 text-center">أخصائي تغذية</th>
-                <th className="p-3 text-center">أخصائي اجتماعي</th>
-                <th className="p-3 text-center">إدارة العيادة</th>
+          <table className="w-full text-right text-xs">
+            <thead>
+              <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 text-slate-700 dark:text-slate-300">
+                <th className="p-2.5 font-bold">الوقت والتاريخ</th>
+                <th className="p-2.5 font-bold">الفاعل السريري</th>
+                <th className="p-2.5 font-bold">الإجراء الموثق</th>
+                <th className="p-2.5 font-bold">الهدف / المريض</th>
+                <th className="p-2.5 font-bold font-mono">عنوان IP</th>
+                <th className="p-2.5 font-bold text-center">الحالة</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {permissionsMatrix.map((item, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
-                  <td className="p-3 font-semibold text-slate-800 dark:text-slate-200">{item.feature}</td>
-                  
-                  <td className="p-3 text-center">
-                    {item.psychiatrist ? (
-                      <span className="inline-flex p-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400"><Check className="w-3.5 h-3.5" /></span>
-                    ) : (
-                      <span className="inline-flex p-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400"><X className="w-3.5 h-3.5" /></span>
-                    )}
-                  </td>
-
-                  <td className="p-3 text-center">
-                    {item.psychologist ? (
-                      <span className="inline-flex p-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400"><Check className="w-3.5 h-3.5" /></span>
-                    ) : (
-                      <span className="inline-flex p-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400"><X className="w-3.5 h-3.5" /></span>
-                    )}
-                  </td>
-
-                  <td className="p-3 text-center">
-                    {item.nutritionist ? (
-                      <span className="inline-flex p-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400"><Check className="w-3.5 h-3.5" /></span>
-                    ) : (
-                      <span className="inline-flex p-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400"><X className="w-3.5 h-3.5" /></span>
-                    )}
-                  </td>
-
-                  <td className="p-3 text-center">
-                    {item.social_worker ? (
-                      <span className="inline-flex p-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400"><Check className="w-3.5 h-3.5" /></span>
-                    ) : (
-                      <span className="inline-flex p-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400"><X className="w-3.5 h-3.5" /></span>
-                    )}
-                  </td>
-
-                  <td className="p-3 text-center">
-                    {item.admin ? (
-                      <span className="inline-flex p-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400"><Check className="w-3.5 h-3.5" /></span>
-                    ) : (
-                      <span className="inline-flex p-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400"><X className="w-3.5 h-3.5" /></span>
-                    )}
+              {filteredLogs.map(log => (
+                <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/50">
+                  <td className="p-2.5 font-mono text-[11px] text-slate-500">{log.timestamp}</td>
+                  <td className="p-2.5 font-bold text-slate-800 dark:text-slate-200">{log.actorName}</td>
+                  <td className="p-2.5 text-slate-700 dark:text-slate-300">{log.action}</td>
+                  <td className="p-2.5 text-slate-600 dark:text-slate-400">{log.target}</td>
+                  <td className="p-2.5 font-mono text-[11px] text-slate-500">{log.ipAddress}</td>
+                  <td className="p-2.5 text-center">
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] font-bold border border-emerald-200 dark:border-emerald-800">
+                      {log.status}
+                    </span>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* Security Principles & Audit Log Simulation */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-2xs space-y-3 transition-colors">
-          <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white text-sm">
-            <ShieldCheck className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-            <span>معايير الخصوصية الصارمة للمريض النفسي</span>
-          </div>
-          <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-2 leading-relaxed list-disc mr-4">
-            <li><strong>فصل الملاحظات الخاصة:</strong> ملاحظات الجلسات التحليلية غير متاحة للموظفين الإداريين أو الاستقبال.</li>
-            <li><strong>تشفير الوصفات الطبية:</strong> الوصفات تحمي بيانات الأدوية وتمنع التلاعب بالجرعات أو تكرار الصرف غير المشروع.</li>
-            <li><strong>سجل التدقيق الرقمي:</strong> يُسجل وقت وتاريخ وهوية كل ممارس قام بالاطلاع على أي ملف مريض.</li>
-          </ul>
-        </div>
-
-        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-2xs space-y-3 transition-colors">
-          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-            <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white text-xs">
-              <History className="w-4 h-4 text-slate-500" />
-              <span>سجل النشاط والأمان المباشر (Audit Log)</span>
-            </div>
-            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded">آمن</span>
-          </div>
-
-          <div className="space-y-2 text-[11px] font-mono text-slate-600 dark:text-slate-400">
-            <div className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
-              <span className="text-slate-400">13:45</span> · د. طارق الحكيم أجرى مقياس PHQ-9 للمريضة سارة المنصور (CM-2026-081).
-            </div>
-            <div className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
-              <span className="text-slate-400">13:30</span> · تم إصدار وصفة Escitalopram 10mg للملف (CM-2026-081).
-            </div>
-            <div className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
-              <span className="text-slate-400">12:15</span> · تم اعتماد فحص الحالة العقلية MSE بنجاح للملف (CM-2026-089).
-            </div>
-          </div>
         </div>
       </div>
 
