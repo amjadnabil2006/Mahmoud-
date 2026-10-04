@@ -160,16 +160,110 @@ export const AdminSettingsTab: React.FC<Props> = ({
 
             <div className="space-y-1">
               <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                <Mail className="w-3.5 h-3.5 text-teal-600" />
-                <span>البريد الإلكتروني الرسمي للاستفسارات:</span>
+                <Globe className="w-3.5 h-3.5 text-teal-600" />
+                <span>النطاق والدومين الرسمي (Domain):</span>
               </label>
               <input
-                type="email"
-                value={formData.clinicEmail || ''}
-                onChange={(e) => setFormData({ ...formData, clinicEmail: e.target.value })}
+                type="text"
+                value={formData.domainName || 'coolmindcenter.com'}
+                onChange={(e) => setFormData({ ...formData, domainName: e.target.value })}
                 dir="ltr"
                 className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-left font-mono"
               />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                <Mail className="w-3.5 h-3.5 text-teal-600" />
+                <span>البريد الإلكتروني العام (Info):</span>
+              </label>
+              <input
+                type="email"
+                value={formData.infoEmail || formData.clinicEmail || 'info@coolmindcenter.com'}
+                onChange={(e) => setFormData({ ...formData, infoEmail: e.target.value, clinicEmail: e.target.value })}
+                dir="ltr"
+                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-left font-mono"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                <Mail className="w-3.5 h-3.5 text-teal-600" />
+                <span>بريد الحجوزات والمواعيد (Booking):</span>
+              </label>
+              <input
+                type="email"
+                value={formData.bookingEmail || 'booking@coolmindcenter.com'}
+                onChange={(e) => setFormData({ ...formData, bookingEmail: e.target.value })}
+                dir="ltr"
+                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-left font-mono"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                <Mail className="w-3.5 h-3.5 text-teal-600" />
+                <span>بريد خدمة العملاء والدعم (Support):</span>
+              </label>
+              <input
+                type="email"
+                value={formData.supportEmail || 'support@coolmindcenter.com'}
+                onChange={(e) => setFormData({ ...formData, supportEmail: e.target.value })}
+                dir="ltr"
+                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-left font-mono"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                <Mail className="w-3.5 h-3.5 text-teal-600" />
+                <span>بريد التقارير الطبية والإدارية (Reports):</span>
+              </label>
+              <input
+                type="email"
+                value={formData.reportsEmail || 'reports@coolmindcenter.com'}
+                onChange={(e) => setFormData({ ...formData, reportsEmail: e.target.value })}
+                dir="ltr"
+                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-left font-mono"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                <Mail className="w-3.5 h-3.5 text-teal-600" />
+                <span>بريد شؤون الأطباء والتوظيف (Doctors):</span>
+              </label>
+              <input
+                type="email"
+                value={formData.doctorsEmail || 'doctors@coolmindcenter.com'}
+                onChange={(e) => setFormData({ ...formData, doctorsEmail: e.target.value })}
+                dir="ltr"
+                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-left font-mono"
+              />
+            </div>
+
+            <div className="space-y-1 sm:col-span-2">
+              <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                <Globe className="w-3.5 h-3.5 text-purple-600" />
+                <span>رابط تسجيل الدخول لبريد الويب الإداري (Webmail URL):</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={formData.webmailUrl || 'https://cpl102.main-hosting.eu:2096/'}
+                  onChange={(e) => setFormData({ ...formData, webmailUrl: e.target.value })}
+                  dir="ltr"
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-left font-mono"
+                />
+                <a
+                  href={formData.webmailUrl || 'https://cpl102.main-hosting.eu:2096/'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold shrink-0 transition flex items-center gap-1.5"
+                >
+                  <span>دخول Webmail ↗</span>
+                </a>
+              </div>
             </div>
 
             <div className="space-y-1">

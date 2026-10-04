@@ -10,11 +10,15 @@ import {
   RefreshCw, 
   Cookie, 
   SlidersHorizontal,
-  ChevronDown
+  ChevronDown,
+  Users2,
+  Zap
 } from 'lucide-react';
 
+export type LegalModalType = 'privacy' | 'terms' | 'emergency' | 'refund' | 'group_therapy' | 'instant_consultation' | null;
+
 interface LegalModalProps {
-  type: 'privacy' | 'terms' | 'emergency' | 'refund' | null;
+  type: LegalModalType;
   onClose: () => void;
 }
 
@@ -22,117 +26,280 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
   if (!type) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-2xl max-h-[85vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-fadeIn" dir="rtl">
+      <div className="relative w-full max-w-3xl max-h-[88vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden">
+        
         {/* Header */}
         <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 flex items-center justify-center">
               {type === 'privacy' && <ShieldCheck className="w-5 h-5" />}
               {type === 'terms' && <FileText className="w-5 h-5" />}
               {type === 'emergency' && <AlertTriangle className="w-5 h-5 text-amber-500" />}
               {type === 'refund' && <RefreshCw className="w-5 h-5" />}
+              {type === 'group_therapy' && <Users2 className="w-5 h-5 text-purple-600" />}
+              {type === 'instant_consultation' && <Zap className="w-5 h-5 text-amber-500" />}
             </div>
             <div>
               <h3 className="text-base font-black text-slate-800 dark:text-slate-100">
-                {type === 'privacy' && 'سياسة الخصوصية وحماية البيانات الطبية'}
-                {type === 'terms' && 'الشروط والأحكام العامة للمنصة'}
+                {type === 'privacy' && 'سياسة الخصوصية وحماية البيانات — Coolmind Center'}
+                {type === 'terms' && 'الشروط والأحكام العامة للمنصة — Coolmind Center'}
                 {type === 'emergency' && 'سياسة الطوارئ والتدخل في الأزمات النفسية'}
-                {type === 'refund' && 'سياسة الإلغاء وإعادة الجدولة والاسترداد المالي'}
+                {type === 'refund' && 'سياسة استرجاع الأموال وإلغاء الاشتراكات'}
+                {type === 'group_therapy' && 'الشروط والأحكام الخاصة بجلسات العلاج الجماعي'}
+                {type === 'instant_consultation' && 'سياسة وضوابط الجلسات الاستشارية الفورية'}
               </h3>
-              <p className="text-xs text-slate-500">منصة CoolMind — كول مايند للرعاية النفسية المتكاملة</p>
+              <p className="text-xs text-slate-500">مستند تنظيمي لخدمات الرعاية النفسية والدعم السلوكي والاستشارات عن بُعد</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto space-y-5 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+        <div className="p-6 overflow-y-auto space-y-6 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+          
+          {/* ======================================================== */}
+          {/* 1. PRIVACY POLICY                                        */}
+          {/* ======================================================== */}
           {type === 'privacy' && (
             <>
-              {/* Highlight Box: Your Privacy is Safe */}
               <div className="p-4 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 rounded-2xl space-y-2">
                 <h4 className="font-bold text-teal-900 dark:text-teal-200 flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-teal-600" />
-                  خصوصيتك بأمان — وعد كول مايند للسرية القصوى
+                  خصوصيتك مهمة للغاية بالنسبة إلى Coolmind Center
                 </h4>
                 <p className="text-xs text-teal-800 dark:text-teal-300">
-                  نحن نؤمن بأن الأمان النفسي يبدأ من الخصوصية المطلقة. تخضع جميع الاتصالات والمقاييس لبروتوكولات تشفير متقدمة من طرف إلى طرف (End-to-End Encryption).
+                  نولي اهتمامًا كبيرًا بحماية معلوماتك الشخصية والبيانات المتعلقة باستخدامك لمنصتنا وخدماتنا، ونعمل على تطبيق الإجراءات التنظيمية والتقنية المناسبة للمساعدة في حماية هذه المعلومات وفق أعلى معايير التشفير (HIPAA / End-to-End).
                 </p>
-                <ul className="text-xs text-teal-800 dark:text-teal-300 space-y-1 list-disc list-inside">
-                  <li><strong>لا يتم تسجيل الجلسات المرئية أو الصوتية إطلاقاً</strong> ولا يمكن لأي طرف الاطلاع عليها.</li>
-                  <li><strong>اسمك وهويتك اختياريان تماماً:</strong> يمكنك التسجيل باسم مستعار أو استخدام الدخول المجهول.</li>
-                  <li><strong>الاستقلالية التامة:</strong> لا يتم ربط ملفك بأي تأمين تجاري أو جهة عمل دون موافقتك الصريحة.</li>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm">1. جمع المعلومات واستخدامها والإفصاح عنها</h4>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  لتشغيل المنصة بصورة فعالة وتمكينك من استخدام خدمات الاستشارات والدعم النفسي، نقوم بجمع واستخدام وتخزين أنواع محددة من المعلومات:
+                </p>
+                <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1.5 list-disc list-inside bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                  <li><strong>بيانات الزائر:</strong> الصفحات التي يزورها، مدة الاستخدام، الأخطاء التقنية، ومعلومات الجهاز وعنوان IP لتشغيل الخدمة وحمايتها.</li>
+                  <li><strong>بيانات المعاملات:</strong> تفاصيل الدفع والاشتراك والتجديد دون تخزين أرقام البطاقات البنكية الكاملة.</li>
+                  <li><strong>بيانات تسجيل الحساب:</strong> الاسم أو الاسم المستعار، البريد الإلكتروني، ورقم الهاتف.</li>
+                  <li><strong>بيانات جلسات العلاج والاستشارات:</strong> بيانات إدارية كحجز الموعد ووقت الجلسة وحالة الحضور، مع تشفير وحماية السجلات الصحية الحساسة وفق أعلى المعايير المهنية.</li>
+                  <li><strong>بيانات الأخصائيين والمعالجين:</strong> المؤهلات المهنية، التراخيص، وبيانات الاعتماد.</li>
                 </ul>
               </div>
 
-              <div>
-                <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-1">1. جمع البيانات واستخدامها</h4>
+              <div className="space-y-2">
+                <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm">2. حدود الاستثناء القانونية والمهنية لكسر السرية</h4>
                 <p className="text-xs text-slate-600 dark:text-slate-400">
-                  نجمع فقط الحد الأدنى من البيانات اللازمة لتقديم الرعاية الطبية (مثل نتائج المقاييس الذاتية، وسجل الأدوية المعتمد في الجلسة، وتفضيلات المواعيد).
+                  لن نستخدم أو نكشف معلوماتك الشخصية إلا بموافقتك، باستثناء الحالات القانونية والمهنية الحصرية التالية لحماية الأرواح:
                 </p>
-              </div>
-
-              <div>
-                <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-1">2. حدود الاستثناء الوحيدة لكسر السرية الطبية (Limits of Confidentiality)</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">
-                  التزاماً بأخلاقيات الطب النفسي العالمية والقوانين الطبية، تظل جميع معلوماتك طي الكتمان التام إلا في حالتين حصريتين فقط:
-                </p>
-                <ol className="text-xs text-slate-600 dark:text-slate-400 list-decimal list-inside space-y-1 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
-                  <li><strong>وجود خطة انتحار نشطة ووشيكة</strong> مع نية مؤكدة لإيذاء النفس تتطلب تدخلاً إنقاذياً عاجلاً لحماية الحياة.</li>
-                  <li><strong>وجود تهديد صريح ومباشر لحياة شخص آخر</strong>، خصوصاً ما يتعلق بحماية الأطفال أو العجزة من الإيذاء الجسيم.</li>
+                <ol className="text-xs text-slate-600 dark:text-slate-400 list-decimal list-inside space-y-1.5 bg-rose-50/60 dark:bg-rose-950/30 p-3.5 rounded-2xl border border-rose-200 dark:border-rose-900">
+                  <li>وجود خطر انتحار وشيك أو خطير يستدعي تدخلاً إسعافياً لحماية الحياة.</li>
+                  <li>وجود تهديد جدي وصريح بإيذاء شخص آخر أو إساءة معاملة طفل أو شخص بالغ معرض للخطر.</li>
+                  <li>وجود أمر قضائي أو التزام قانوني رسمي بالإفصاح.</li>
                 </ol>
-                <p className="text-xs text-slate-500 mt-2">
-                  * موقف التعاطي والإدمان: الإفصاح عن تعاطي أي مادة يخضع للسرية الطبية التامة ولا يتم إبلاغ أي جهة قانونية، حيث يُعامل المريض كطالب علاج ورعاية صحية.
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm">3. ملفات تعريف الارتباط (Cookies) والأمان</h4>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  تُستخدم ملفات تعريف الارتباط لحفظ تفضيلاتك وتسهيل تسجيل الدخول وحماية الحسابات. يمكنك إدارة ملفات تعريف الارتباط عبر إعدادات المتصفح في أي وقت.
                 </p>
               </div>
 
-              <div>
-                <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-1">3. حق حذف البيانات وحذف الحساب</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  يحق للعميل في أي وقت طلب تصدير بياناته أو حذف حسابه وبياناته نهائياً من خوادم المنصة عبر صفحة إدارة الحساب أو التواصل مع مسؤول حماية البيانات.
-                </p>
+              <div className="p-3.5 bg-slate-100 dark:bg-slate-800 rounded-2xl text-xs space-y-1">
+                <strong className="text-slate-900 dark:text-white block">قنوات التواصل بخصوص الخصوصية:</strong>
+                <p className="text-slate-500">البريد الإلكتروني: support@coolmind.center · واتساب: +967 770 000 000</p>
               </div>
             </>
           )}
 
+          {/* ======================================================== */}
+          {/* 2. TERMS & CONDITIONS                                    */}
+          {/* ======================================================== */}
           {type === 'terms' && (
             <>
-              <div>
-                <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-1">1. طبيعة الخدمات المقدمة</h4>
+              <div className="space-y-2">
+                <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm">1. الأخصائيون والمعالجون وخدماتهم</h4>
                 <p className="text-xs text-slate-600 dark:text-slate-400">
-                  منصة CoolMind تقدم استشارات طبية نفسية، علاجاً معرفياً سلوكياً (CBT)، إرشاداً أسرياً، وتغذية علاجية نفسية عن بُعد. المنصة ليست بديلاً عن غرف الطوارئ الإسعافية في المستشفيات للحالات العضوية الحرجة.
+                  يقتصر دور المنصة على تنظيم وتمكين الوصول إلى الخدمات، بينما تقع المسؤولية المهنية عن الخدمة المقدمة على الأخصائي أو المعالج المختص ضمن حدود اختصاصه وتراخيصه. وتتيح المنصة تغيير الأخصائي متى ما رغب العميل في ذلك.
                 </p>
               </div>
 
-              <div>
-                <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-1">2. أهلية الاستخدام ومسار الأطفال</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  الخدمات الفردية مخصصة للأفراد من سن 18 عاماً فأكثر. بالنسبة لمسار الأطفال والمراهقين (أقل من 18 عاماً)، يُشترط وجود موافقة خطية صريحة من ولي الأمر أو حضور ولي الأمر في المقابلة التشخيصية الأولى.
-                </p>
+              <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl space-y-1 text-xs text-amber-900 dark:text-amber-200">
+                <strong className="block font-bold">الحالات الطارئة والخطرة:</strong>
+                <span>
+                  المنصة ليست بديلاً عن غرف الطوارئ الإسعافية في المستشفيات. إذا كنت تفكر في الانتحار أو إيذاء النفس أو توجد حالة طبية طارئة، يجب التوجه فوراً لأقرب منشأة صحية أو الاتصال بخطوط الطوارئ المحلية.
+                </span>
               </div>
 
-              <div>
-                <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-1">3. معايير المختصين والتراخيص</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  جميع الاستشاريين والأخصائيين المعتمدين في كول مايند حاصلون على تراخيص مزاولة مهنة سارية ومصادق عليها من المجالس الطبية والنقابات المهنية المعتمدة.
-                </p>
+              <div className="space-y-2">
+                <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm">2. إقرارات والتزامات المستخدم</h4>
+                <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-1 list-disc list-inside">
+                  <li>أن تكون قادراً قانونياً على الموافقة على تلقي الخدمات (أو بموافقة ولي الأمر لمن هم دون 18 عاماً).</li>
+                  <li>تقديم بيانات صحيحة ومحدثة والحفاظ على سرية بيانات الدخول.</li>
+                  <li>استخدام المنصة للأغراض المشروعة وعدم انتهاك القواعد الأخلاقية أو محاولة اختراق الأنظمة.</li>
+                  <li>استخدام وسائل دفع يملك المستخدم صلاحية استخدامها.</li>
+                </ul>
               </div>
 
-              <div>
-                <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-1">4. سياسة حضور الجلسات والمواعيد</h4>
+              <div className="space-y-2">
+                <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm">3. رسوم الجلسات والتعديلات والإنهاء</h4>
                 <p className="text-xs text-slate-600 dark:text-slate-400">
-                  يبدأ وقت الجلسة في الموعد المحدد بدقة. في حال تأخر العميل يتم إكمال الوقت المتبقي من الجلسة. وفي حال تأخر المختص يتم تعويض الوقت كاملاً أو تقديم جلسة بديلة مجاناً.
+                  تخضع رسوم الجلسات للأسعار المعلنة وقت الحجز. ويحق للعميل إلغاء حسابه أو اشتراكه في أي وقت وفق سياسة الإلغاء المعلنة.
                 </p>
               </div>
             </>
           )}
 
+          {/* ======================================================== */}
+          {/* 3. GROUP THERAPY TERMS (10 RULES)                        */}
+          {/* ======================================================== */}
+          {type === 'group_therapy' && (
+            <>
+              <div className="p-4 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-2xl space-y-2">
+                <h4 className="font-bold text-purple-900 dark:text-purple-200 flex items-center gap-2">
+                  <Users2 className="w-5 h-5 text-purple-600" />
+                  ميثاق وقواعد المشاركة في جلسات العلاج النفسي والدعم الجماعي
+                </h4>
+                <p className="text-xs text-purple-800 dark:text-purple-300">
+                  المشاركة في المجموعات تعني الالتزام الصارم بالقواعد العشر التالية لضمان بيئة آمنة وداعمة ومحترمة لجميع الأعضاء:
+                </p>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <strong className="text-purple-700 dark:text-purple-300 block mb-0.5">1. السرية والخصوصية التامة:</strong>
+                  <span>السرية ركن أساسي. يُحظر تماماً مشاركة ما يدور داخل الجلسة مع أي طرف خارجي، وحماية هويات المشاركين.</span>
+                </div>
+
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <strong className="text-purple-700 dark:text-purple-300 block mb-0.5">2. حظر التسجيل والتصوير الصارم:</strong>
+                  <span>يُمنع منعاً باتاً تسجيل الصوت أو الفيديو أو أخذ لقطات شاشة، ويُعرّض المخالف للمساءلة القانونية والإلغاء الفوري.</span>
+                </div>
+
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <strong className="text-purple-700 dark:text-purple-300 block mb-0.5">3. الاحترام المتبادل والسلوك اللائق:</strong>
+                  <span>الامتناع عن أي سلوك عدواني أو تهكمي أو تحيز، واحترام كافة وجهات النظر والمشاعر.</span>
+                </div>
+
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <strong className="text-purple-700 dark:text-purple-300 block mb-0.5">4. الغرض من الجلسات الجماعية:</strong>
+                  <span>مساحة داعمة لمشاركة الخبرات، وليست بديلاً عن العلاج الفردي المكثف أو التدخلات الطبية الدوائية الطارئة.</span>
+                </div>
+
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <strong className="text-purple-700 dark:text-purple-300 block mb-0.5">5. الالتزام بالوقت والانضمام المنتظم:</strong>
+                  <span>الحضور في الوقت المحدد للحفاظ على استقرار وتماسك المجموعة وعدم تشتيت بقية الأعضاء.</span>
+                </div>
+
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <strong className="text-purple-700 dark:text-purple-300 block mb-0.5">6. حرية مغادرة الجلسة أو الانسحاب:</strong>
+                  <span>يحق للمشارك الانسحاب متى شعر بعدم الارتياح، وتخضع إعادة الانضمام لتقييم الأخصائي المشرف.</span>
+                </div>
+
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <strong className="text-purple-700 dark:text-purple-300 block mb-0.5">7. إدارة وضبط الجلسة من الأخصائي:</strong>
+                  <span>يتولى المعالج المشرف تنظيم الحوار وحماية البيئة العلاجية وله صلاحية إيقاف أي مشارك مخل بالقواعد.</span>
+                </div>
+
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <strong className="text-purple-700 dark:text-purple-300 block mb-0.5">8. عدم تبادل معلومات الاتصال الشخصية:</strong>
+                  <span>يُفضل عدم تبادل أرقام الهواتف أو الحسابات الشخصية بين المشاركين للحفاظ على حيادية وأمان المجموعة.</span>
+                </div>
+
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <strong className="text-purple-700 dark:text-purple-300 block mb-0.5">9. الالتزام ببيئة آمنة وإيجابية:</strong>
+                  <span>الامتناع عن التحريض أو إعطاء نصائح طبية غير متخصصة للأعضاء، والحفاظ على مساحة التعاطف الإنساني.</span>
+                </div>
+
+                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <strong className="text-purple-700 dark:text-purple-300 block mb-0.5">10. الموافقة الكاملة على الشروط:</strong>
+                  <span>الانضمام للمجموعة يُعد توقيعاً رقمياً ملزماً بقبول ومراعاة كافة البنود أعلاه.</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ======================================================== */}
+          {/* 4. INSTANT CONSULTATION POLICY                           */}
+          {/* ======================================================== */}
+          {type === 'instant_consultation' && (
+            <>
+              <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl space-y-2">
+                <h4 className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-amber-500" />
+                  سياسة الجلسات الفورية والدعم اللحظي
+                </h4>
+                <p className="text-xs text-amber-800 dark:text-amber-300">
+                  الجلسة الفورية هي جلسة دعم نفسي قصيرة (~15 دقيقة) مع أخصائي مناوب، وليست بديلاً عن خطط العلاج الطويلة أو حالات الطوارئ الطبية الحرجة.
+                </p>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-1">1. مدة الانتظار التقديرية</h4>
+                  <p className="text-slate-600 dark:text-slate-400">
+                    الوقت المعروض لبدء الجلسة (مثال: ~15 دقيقة) هو وقت تقديري يعتمد على عدد الأخصائيين المناوبين وقائمة الانتظار اللحظية، وليس التزاماً زمنياً ثابتاً.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-1">2. سياسة الدفع والاسترداد الفوري</h4>
+                  <p className="text-slate-600 dark:text-slate-400">
+                    يتم دفع قيمة الجلسة قبل الدخول لقائمة الانتظار. ويستحق العميل استرداداً كاملاً إذا حدث خلل تقني منع بدء الجلسة أو تعذر توفر أخصائي مناوب خلال فترة انتظار غير منطقية.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-1">3. الإلغاء وعدم الحضور</h4>
+                  <p className="text-slate-600 dark:text-slate-400">
+                    مغادرة صفحة الانتظار بعد قبول الجلسة أو عدم الاستجابة لاتصال الأخصائي خلال فترة السماح يُعد عدم حضور ولا يتيح استرداد الرسوم.
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* ======================================================== */}
+          {/* 5. REFUND POLICY                                         */}
+          {/* ======================================================== */}
+          {type === 'refund' && (
+            <>
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl space-y-1">
+                <h4 className="font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  سياسة واضحة وعادلة تحمي حقوقك كاملة
+                </h4>
+                <p className="text-xs text-emerald-800 dark:text-emerald-300">
+                  تخضع طلبات الاسترداد لضوابط واضحة تضمن حق العميل وحق الطبيب في حجز الوقت المخصص.
+                </p>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <h4 className="font-bold text-slate-900 dark:text-slate-100">حالات استحقاق الاسترداد المالي:</h4>
+                <ul className="space-y-2 list-disc list-inside text-slate-600 dark:text-slate-300">
+                  <li><strong>إلغاء الموعد قبل 24 ساعة:</strong> استرداد كامل للمبلغ بنسبة 100% إلى البطاقة أو تحويله كرصيد بالمحفظة.</li>
+                  <li><strong>إلغاء الموعد قبل 12 ساعة:</strong> استرداد بنسبة 50% أو إعادة جدولة مجانية لمرة واحدة.</li>
+                  <li><strong>إلغاء من جانب الأخصائي:</strong> استرداد كامل فوري أو إعادة حجز مع أخصائي بديل فوراً مع أولوية الموعد.</li>
+                  <li><strong>خلل تقني من المنصة:</strong> تعويض فوري بجلسة بديلة أو استرداد كامل المبلغ.</li>
+                  <li><strong>باقات الشهور المتعددة:</strong> استرداد نسبي للجلسات المتبقية غير المستخدمة وفق سياسة إلغاء الاشتراك.</li>
+                </ul>
+
+                <p className="text-[11px] text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  * تستغرق معالجة المبالغ المستردة من 3 إلى 7 أيام عمل بحسب مزود الدفع والبنك المصدر للبطاقة.
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* ======================================================== */}
+          {/* 6. EMERGENCY POLICY                                      */}
+          {/* ======================================================== */}
           {type === 'emergency' && (
             <>
               <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 rounded-2xl space-y-2">
@@ -156,7 +323,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
 
                   <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                     <p className="font-bold text-slate-800 dark:text-slate-200">🇸🇦 المملكة العربية السعودية</p>
-                    <p className="text-teal-600 font-mono font-bold mt-1 text-sm">937 (الاستشارات الطبية) / 920033360</p>
+                    <p className="text-teal-600 font-mono font-bold mt-1 text-sm">937 / 920033360</p>
                     <p className="text-[11px] text-slate-500 mt-0.5">المركز الوطني لتعزيز الصحة النفسية</p>
                   </div>
 
@@ -168,187 +335,71 @@ export const LegalModal: React.FC<LegalModalProps> = ({ type, onClose }) => {
 
                   <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                     <p className="font-bold text-slate-800 dark:text-slate-200">💬 واتساب الدعم الفوري</p>
-                    <p className="text-emerald-600 font-mono font-bold mt-1 text-sm">+967 770 112 233</p>
+                    <p className="text-emerald-600 font-mono font-bold mt-1 text-sm">+967 770 000 000</p>
                     <p className="text-[11px] text-slate-500 mt-0.5">توجيه مباشر للحالات غير الإسعافية</p>
                   </div>
                 </div>
               </div>
-
-              <div>
-                <h4 className="font-bold text-slate-900 dark:text-slate-100 mb-1">خطوات التعامل في حالات الخطر الشديد</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  إذا كنت أنت أو أي شخص قريب منك في خطر داهم، يرجى التوجه فوراً إلى أقرب قسم طوارئ مستشفى أو التواصل مع أحد الأرقام الإسعافية المحلية في بلدك دون انتظار.
-                </p>
-              </div>
             </>
           )}
 
-          {type === 'refund' && (
-            <>
-              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl space-y-1">
-                <h4 className="font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  سياسة واضحة وعادلة تحمي حقوقك كاملة
-                </h4>
-                <p className="text-xs text-emerald-800 dark:text-emerald-300">
-                  يمكنك إلغاء اشتراكك في أي وقت تريده وبدون الحاجة لإبداء أي سبب.
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <h4 className="font-bold text-slate-900 dark:text-slate-100">قواعد الإلغاء والاسترداد المالي:</h4>
-                <div className="grid grid-cols-1 gap-2 text-xs">
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-slate-800 dark:text-slate-200">إلغاء قبل أكثر من 24 ساعة من موعد الجلسة</p>
-                      <p className="text-[11px] text-slate-500">إلغاء الموعد واسترداد 100% من المبلغ تلقائياً أو إعادة جدولة مجانية</p>
-                    </div>
-                    <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 font-bold rounded-lg shrink-0">استرداد 100%</span>
-                  </div>
-
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-slate-800 dark:text-slate-200">إلغاء بين 12 إلى 24 ساعة قبل الموعد</p>
-                      <p className="text-[11px] text-slate-500">استرداد 50% من قيمة الجلسة نظراً لحجز وقت المختص في الجدول</p>
-                    </div>
-                    <span className="px-2.5 py-1 bg-amber-100 text-amber-800 font-bold rounded-lg shrink-0">استرداد 50%</span>
-                  </div>
-
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-slate-800 dark:text-slate-200">إلغاء قبل أقل من 12 ساعة أو التغيب (No-show)</p>
-                      <p className="text-[11px] text-slate-500">لا يمكن الاسترداد، مع إمكانية تقديم طلب استثنائي للظروف القاهرة</p>
-                    </div>
-                    <span className="px-2.5 py-1 bg-slate-200 text-slate-700 font-bold rounded-lg shrink-0">لا استرداد</span>
-                  </div>
-
-                  <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-slate-800 dark:text-slate-200">استرداد جلسات الباقات المتعددة (أمل / رضا)</p>
-                      <p className="text-[11px] text-slate-500">يتم احتساب الجلسات المستهلكة بسعر الجلسة الفردية واسترداد كامل الرصيد المتبقي</p>
-                    </div>
-                    <span className="px-2.5 py-1 bg-teal-100 text-teal-800 font-bold rounded-lg shrink-0">رصيد متبقي</span>
-                  </div>
-
-                  <div className="p-3 bg-teal-50 dark:bg-teal-950/30 rounded-xl border border-teal-200 dark:border-teal-800/40 flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-teal-900 dark:text-teal-200">الاستشارة الفورية (Instant Consultation)</p>
-                      <p className="text-[11px] text-teal-700 dark:text-teal-300">استرداد تلقائي كامل وفوري في حال تعذر تعيين طبيب متاح خلال 15 دقيقة</p>
-                    </div>
-                    <span className="px-2.5 py-1 bg-teal-600 text-white font-bold rounded-lg shrink-0">استرداد فوري</span>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-end bg-slate-50 dark:bg-slate-800/50">
+        <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+          <div className="text-[11px] text-slate-400">
+            وثيقة تنظيمية معتمدة لـ Coolmind Center · 2026
+          </div>
           <button
             onClick={onClose}
-            className="px-6 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl transition shadow-sm text-sm"
+            className="px-6 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
           >
-            إغلاق وقبول
+            فهمت وموافق
           </button>
         </div>
+
       </div>
     </div>
   );
 };
 
-export const CookieConsentBanner: React.FC<{ onOpenSettings?: () => void }> = ({ onOpenSettings }) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [isCustomizing, setIsCustomizing] = useState(false);
-  const [necessary, setNecessary] = useState(true);
-  const [analytics, setAnalytics] = useState(true);
-  const [preferences, setPreferences] = useState(true);
+export const CookieConsentBanner: React.FC = () => {
+  const [accepted, setAccepted] = useState<boolean>(() => {
+    return localStorage.getItem('cm_cookie_consent') === 'true';
+  });
 
-  useEffect(() => {
-    const consent = localStorage.getItem('coolmind_cookie_consent');
-    if (!consent) {
-      const timer = setTimeout(() => setIsVisible(true), 1200);
-      return () => clearTimeout(timer);
-    }
-  }, []);
+  if (accepted) return null;
 
-  if (!isVisible) return null;
-
-  const handleAcceptAll = () => {
-    localStorage.setItem('coolmind_cookie_consent', 'accepted_all');
-    setIsVisible(false);
-  };
-
-  const handleSaveCustom = () => {
-    localStorage.setItem('coolmind_cookie_consent', JSON.stringify({ necessary, analytics, preferences }));
-    setIsVisible(false);
+  const handleAccept = () => {
+    localStorage.setItem('cm_cookie_consent', 'true');
+    setAccepted(true);
   };
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 md:left-6 md:right-auto md:max-w-md z-40 bg-white dark:bg-slate-900 p-5 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 animate-slideUp">
-      <div className="flex items-start gap-3 mb-3">
-        <div className="w-10 h-10 rounded-2xl bg-teal-100 dark:bg-teal-900/50 text-teal-600 dark:text-teal-300 flex items-center justify-center shrink-0">
+    <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-2xl animate-fadeIn text-right" dir="rtl">
+      <div className="flex items-start gap-3">
+        <div className="w-9 h-9 rounded-2xl bg-teal-50 dark:bg-teal-950 text-teal-600 flex items-center justify-center shrink-0">
           <Cookie className="w-5 h-5" />
         </div>
-        <div>
-          <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">إعدادات الخصوصية وملفات الارتباط</h4>
-          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
-            نستخدم ملفات ارتباط أساسية لتأمين تسجيل دخولك وتشفير بيانات الجلسات وتحسين تجربتك العلاجية.
+        <div className="space-y-1">
+          <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+            ملفات تعريف الارتباط والخصوصية (Cookies)
+          </h4>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+            نستخدم ملفات تعريف الارتباط الأساسية لضمان تسجيل الدخول الآمن وتشفير البيانات الطبية وفق سياسة الخصوصية المعتمدة لـ Coolmind.
           </p>
         </div>
       </div>
 
-      {isCustomizing && (
-        <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl mb-3 space-y-2 text-xs">
-          <div className="flex items-center justify-between">
-            <span className="font-bold text-slate-700 dark:text-slate-300">ملفات ضرورية للتشغيل والأمان (إلزامية)</span>
-            <input type="checkbox" checked={true} disabled className="rounded text-teal-600" />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-slate-600 dark:text-slate-400">تفضيلات اللغة والمظهر</span>
-            <input 
-              type="checkbox" 
-              checked={preferences} 
-              onChange={e => setPreferences(e.target.checked)} 
-              className="rounded text-teal-600" 
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-slate-600 dark:text-slate-400">تحليلات الأداء مجهولة الهوية</span>
-            <input 
-              type="checkbox" 
-              checked={analytics} 
-              onChange={e => setAnalytics(e.target.checked)} 
-              className="rounded text-teal-600" 
-            />
-          </div>
-        </div>
-      )}
-
-      <div className="flex items-center gap-2 pt-1">
+      <div className="flex items-center justify-end gap-2 mt-3 pt-2 border-t border-slate-100 dark:border-slate-800">
         <button
-          onClick={handleAcceptAll}
-          className="flex-1 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl transition shadow-sm"
+          onClick={handleAccept}
+          className="px-4 py-1.5 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-xl transition cursor-pointer"
         >
-          السماح للكل
+          موافق وتفعيل
         </button>
-        {isCustomizing ? (
-          <button
-            onClick={handleSaveCustom}
-            className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl transition"
-          >
-            حفظ اختياراتي
-          </button>
-        ) : (
-          <button
-            onClick={() => setIsCustomizing(true)}
-            className="px-3 py-2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 text-xs font-bold transition flex items-center gap-1"
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            تخصيص
-          </button>
-        )}
       </div>
     </div>
   );
 };
+

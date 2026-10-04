@@ -638,13 +638,44 @@ export const FooterSection: React.FC<{
               <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-black">
                 CM
               </div>
-              <span className="text-lg font-black text-white">CoolMind كول مايند</span>
+              <div>
+                <span className="text-lg font-black text-white block">Coolmid Center</span>
+                <span className="text-[10px] text-teal-400 font-bold block">مركز كول مايند للرعاية النفسية</span>
+              </div>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              المنظومة الرقمية الإكلينيكية الأولى للرعاية النفسية المتكاملة، استشارات الطب النفسي والعلاج السلوكي وتغذية الدماغ باليمن والمهجر.
+              المنظومة الرقمية الإكلينيكية الأولى للرعاية النفسية المتكاملة، استشارات الطب النفسي والعلاج السلوكي وتغذية الدماغ وإعادة التأهيل.
             </p>
-            <div className="text-xs text-teal-400 font-bold">
-              📞 طوارئ: +967 770 112 233
+            <div className="space-y-1.5 text-xs text-slate-300 bg-slate-800/60 p-3.5 rounded-2xl border border-slate-700/60">
+              <div className="flex items-center gap-1.5 text-teal-400 font-bold">
+                <span>🌐 النطاق الرسمي:</span>
+                <a href="https://coolmindcenter.com" target="_blank" rel="noreferrer" className="underline hover:text-teal-300 font-mono">
+                  coolmindcenter.com
+                </a>
+              </div>
+              <div className="text-[11px] text-slate-300 font-mono flex items-center gap-1">
+                <span>📧 عام:</span>
+                <a href="mailto:info@coolmindcenter.com" className="text-teal-400 hover:underline">info@coolmindcenter.com</a>
+              </div>
+              <div className="text-[11px] text-slate-300 font-mono flex items-center gap-1">
+                <span>📅 حجوزات:</span>
+                <a href="mailto:booking@coolmindcenter.com" className="text-teal-400 hover:underline">booking@coolmindcenter.com</a>
+              </div>
+              <div className="text-[11px] text-slate-300 font-mono flex items-center gap-1">
+                <span>🛠️ الدعم:</span>
+                <a href="mailto:support@coolmindcenter.com" className="text-teal-400 hover:underline">support@coolmindcenter.com</a>
+              </div>
+              <div className="text-[11px] text-slate-300 font-mono flex items-center gap-1">
+                <span>📑 تقارير:</span>
+                <a href="mailto:reports@coolmindcenter.com" className="text-teal-400 hover:underline">reports@coolmindcenter.com</a>
+              </div>
+              <div className="text-[11px] text-slate-300 font-mono flex items-center gap-1">
+                <span>👨‍⚕️ الأطباء:</span>
+                <a href="mailto:doctors@coolmindcenter.com" className="text-teal-400 hover:underline">doctors@coolmindcenter.com</a>
+              </div>
+              <div className="text-xs text-teal-400 font-bold pt-1 border-t border-slate-700/80 mt-1">
+                📞 خط الطوارئ: +967 770 112 233
+              </div>
             </div>
           </div>
 

@@ -1,103 +1,204 @@
 import { TherapyPackage, Coupon, Doctor, InvoiceRecord, DoctorReview } from '../types';
 
-export const OFFICIAL_THERAPY_PACKAGES: TherapyPackage[] = [
+// 1. باقات الطب النفسي والعلاج المعرفي السلوكي (Psychiatry & Psychotherapy)
+export const PSYCHIATRY_THERAPY_PACKAGES: TherapyPackage[] = [
   {
-    id: 'pkg-safety',
-    nameAr: 'حزمة أمان (جلسة فردية)',
-    nameEn: 'Safety Package (Single Session)',
-    badge: 'تجربة أولى',
+    id: 'pkg-psy-single',
+    nameAr: 'جلسة منفردة (طبيب / معالج نفسي)',
+    nameEn: 'Single Session (Psychiatrist / CBT Therapist)',
+    badge: 'السعر الأساسي',
     sessionsCount: 1,
     validityMonths: 1,
-    priceUSD: 39,
-    priceYER: 11700,
-    priceSAR: 146,
-    originalPriceUSD: 50,
-    saveAmountUSD: 11,
-    saveTextAr: 'وفّر $11 مع العرض الخاص',
+    priceUSD: 39.97,
+    priceYER: 5700,
+    priceSAR: 150,
+    originalPriceUSD: 39.97,
+    saveAmountUSD: 0,
+    saveTextAr: 'السعر المعتمد للجلسة',
     isPopular: false,
-    descriptionAr: 'جلسة استشارية متخصصة ومكثفة مع المعالج أو الطبيب للتشخيص الأولي ووضع خطة التدخل.',
+    descriptionAr: 'جلسة تشخيصية واستشارية كاملة (45 دقيقة للسلوكي / 30 دقيقة للدوائي) مع نخبة الاستشاريين.',
     sessionDurationText: '45 دقيقة للجلسة السلوكية / 30 دقيقة للاستشارة الطبية النفسية',
     featuresAr: [
       'جلسة فردية كاملة مع مختصك المعتمد (فيديو / صوت / كتابي)',
       'تقييم إكلينيكي وتشخيص شامل بالمقاييس الرقمية المعتمدة',
       'خطة علاجية أولية ومتابعة بعد الجلسة',
-      'إمكانية تغيير المعالج مجاناً بدون أي تعقيد'
+      'إمكانية تغيير المعالج مجاناً وبكل مرونة'
     ],
-    cancelAnytimeNoticeAr: 'يمكنك إلغاء موعدك واسترداد المبلغ بالكامل قبل 24 ساعة من الموعد'
+    cancelAnytimeNoticeAr: 'استرداد كامل 100% قبل 24 ساعة من الموعد'
   },
   {
-    id: 'pkg-hope',
-    nameAr: 'حزمة أمل (4 جلسات / شهر)',
-    nameEn: 'Hope Package (4 Sessions / Month)',
+    id: 'pkg-psy-month',
+    nameAr: 'باقة الشهر (4 جلسات - خصم 5%)',
+    nameEn: 'Monthly Plan (4 Sessions - 5% OFF)',
     badge: 'الأكثر طلباً ⭐',
     sessionsCount: 4,
     validityMonths: 1,
-    priceUSD: 139,
-    priceYER: 41700,
-    priceSAR: 521,
-    originalPriceUSD: 156,
-    saveAmountUSD: 17,
-    saveTextAr: 'وفّر $17 شهرياً (فقط $34.75 للجلسة)',
+    priceUSD: 151.88,
+    priceYER: 21700,
+    priceSAR: 569,
+    originalPriceUSD: 159.88,
+    saveAmountUSD: 8,
+    saveTextAr: 'وفّر 5% (فقط $37.97 للجلسة)',
     isPopular: true,
-    descriptionAr: 'البرنامج الأكثر فاعلية واستخداماً لخطط العلاج المعرفي السلوكي (CBT) والتعافي من الاكتئاب والقلق.',
+    descriptionAr: 'البرنامج الأكثر فاعلية لعلاج القلق، نوبات الهلع، والاكتئاب وبناء عادات السلوك الإيجابي.',
     sessionDurationText: '4 جلسات مجدولة (45 دقيقة لكل جلسة سلوكية / 30 دقيقة دوائية)',
     featuresAr: [
-      '4 جلسات أسبوعية منتظمة لبناء عادات التفكير والسلوك الإيجابي',
+      '4 جلسات أسبوعية منتظمة لبناء مهارات التفكير والسلوك الإيجابي',
       'مراسلة نصية وتواصل آمن مع مختصك بين الجلسات',
       'واجبات وتمارين تفاعلية (CBT) مخصصة لحالتك مع متابعة التقدم',
-      'رسم بياني لتحسن المقاييس النفسية في ملفك الموحد',
-      'أولوية في حجز وتعديل المواعيد المرنة'
+      'رسم بياني لتحسن المقاييس النفسية في ملفك الصحي الموحد',
+      'أولوية في حجز وتعديل المواعيد'
     ],
     cancelAnytimeNoticeAr: 'يمكنك إلغاء اشتراكك في أي وقت تريده وبدون إبداء أي سبب'
   },
   {
-    id: 'pkg-contentment',
-    nameAr: 'حزمة رضا (12 جلسة / 3 أشهر)',
-    nameEn: 'Contentment Package (12 Sessions / 3 Months)',
-    badge: 'التعافي الشامل والعميق',
+    id: 'pkg-psy-2months',
+    nameAr: 'باقة الشهرين (8 جلسات - خصم 10%)',
+    nameEn: '2-Month Plan (8 Sessions - 10% OFF)',
+    badge: 'وفّر 10%',
+    sessionsCount: 8,
+    validityMonths: 2,
+    priceUSD: 287.76,
+    priceYER: 41100,
+    priceSAR: 1079,
+    originalPriceUSD: 319.76,
+    saveAmountUSD: 32,
+    saveTextAr: 'وفّر 10% (فقط $35.97 للجلسة)',
+    isPopular: false,
+    descriptionAr: 'برنامج مكثف للتعافي من الصدمات النفسية ونوبات الهلع والوسواس القهري.',
+    sessionDurationText: '8 جلسات موزعة على 8 أسابيع بمتابعة مستمرة',
+    featuresAr: [
+      '8 جلسات علاج نفسي مكثف مع استشاري مرخص',
+      'متابعة ومراسلة مستمرة بين الجلسات لضبط الانتكاسات',
+      'تطبيق المقاييس السريرية الدورية ومراقبة مؤشر التعافي',
+      'مرونة كاملة في إعادة الجدولة وإلغاء الاشتراك'
+    ],
+    cancelAnytimeNoticeAr: 'إلغاء واسترداد الرصيد المتبقي في أي وقت'
+  },
+  {
+    id: 'pkg-psy-3months',
+    nameAr: 'باقة 3 أشهر (12 جلسة - خصم 16% أقصى توفير)',
+    nameEn: '3-Month Plan (12 Sessions - 16% OFF)',
+    badge: 'التعافي الشامل والعميق ⭐',
     sessionsCount: 12,
     validityMonths: 3,
-    priceUSD: 375,
-    priceYER: 112500,
-    priceSAR: 1406,
-    originalPriceUSD: 468,
-    saveAmountUSD: 93,
-    saveTextAr: 'وفّر $93 (فقط $31.25 للجلسة)',
+    priceUSD: 402.84,
+    priceYER: 57600,
+    priceSAR: 1510,
+    originalPriceUSD: 479.64,
+    saveAmountUSD: 76.8,
+    saveTextAr: 'وفّر 16% أقصى خصم (فقط $33.57 للجلسة)',
     isPopular: false,
-    descriptionAr: 'برنامج التعافي المتكامل للحالات المزمنة والصدمات النفسية واضطرابات الشخصية مع استدامة التعافي.',
+    descriptionAr: 'برنامج التعافي المتكامل للحالات المزمنة واضطرابات الشخصية مع استدامة الوقاية ومنع الانتكاس.',
     sessionDurationText: '12 جلسة موزعة على 12 أسبوعاً بمتابعة إكلينيكية حثيثة',
     featuresAr: [
       '12 جلسة علاج نفسي مكثف مع أفضل الاستشاريين المرخصين',
-      'متابعة ومراسلة مستمرة على مدار الأسبوع مع فريق الرعاية',
-      'تنسيق مشترك بين الطبيب النفسي وأخصائي التغذية والسلوك',
-      'جلسة متابعة وقائية لمنع الانتكاسة بعد انتهاء البرنامج',
+      'متابعة وتنسيق مشترك بين الطبيب النفسي وأخصائي السلوك',
+      'جلسة وقائية بعد انتهاء البرنامج لضمان عدم الانتكاس',
       'تقرير طبي معتمد وخاتم رقمي رسمي عند الطلب'
     ],
-    cancelAnytimeNoticeAr: 'يمكنك إلغاء اشتراكك في أي وقت واسترداد الرصيد المتبقي دون أي عوائق'
-  },
-  {
-    id: 'pkg-insurance-corporate',
-    nameAr: 'باقة التأمين والشراكات المؤسسية (B2B)',
-    nameEn: 'Corporate & Insurance Plan',
-    badge: 'تغطية الشركات والتأمين',
-    sessionsCount: 8,
-    validityMonths: 6,
-    priceUSD: 0,
-    priceYER: 0,
-    priceSAR: 0,
-    saveTextAr: 'مغطى بالكامل عبر كود اشتراك جهة العمل أو وثيقة التأمين',
-    isPopular: false,
-    descriptionAr: 'تغطية الرعاية النفسية لموظفي الشركات والمنظمات عبر برامج دعم الموظفين (EAP) والتأمين الطبي.',
-    sessionDurationText: 'جلسات استشارية وسلوكية وفق وثيقة التغطية المعتمدة لشركتك',
-    featuresAr: [
-      'سرية مطلقة: لا يتم مشاركة أي بيانات تشخيصية مع جهة العمل',
-      'تفعيل فوري عبر إدخال كود التغطية المؤسسية أو بطاقة التأمين',
-      'ورش عمل دورية وجلسات تثقيف جماعية للمؤسسات الشريكة',
-      'دعم نفسي طارئ للموظفين وأسرهم 24/7'
-    ],
-    cancelAnytimeNoticeAr: 'خاضع لسياسة التغطية المؤسسية المعتمدة'
+    cancelAnytimeNoticeAr: 'إلغاء واسترداد الرصيد المتبقي في أي وقت'
   }
 ];
+
+// 2. باقات التغذية العلاجية والخدمة الاجتماعية (Nutrition & Social Work - الخيار أ السعر الموحد $29.97)
+export const NUTRITION_SOCIAL_PACKAGES: TherapyPackage[] = [
+  {
+    id: 'pkg-nut-single',
+    nameAr: 'جلسة منفردة (تغذية علاجية / خدمة اجتماعية)',
+    nameEn: 'Single Session (Clinical Nutrition / Social Worker)',
+    badge: 'السعر الأساسي الموحد',
+    sessionsCount: 1,
+    validityMonths: 1,
+    priceUSD: 29.97,
+    priceYER: 4300,
+    priceSAR: 112,
+    originalPriceUSD: 29.97,
+    saveAmountUSD: 0,
+    saveTextAr: 'السعر المعتمد للجلسة',
+    isPopular: false,
+    descriptionAr: 'تقييم شامل لمحور الأمعاء-الدماغ، العادات الغذائية، أو الاستشارات الأسرية والزوجية.',
+    sessionDurationText: '45 دقيقة للجلسة الاستشارية المتخصصة',
+    featuresAr: [
+      'تقييم شامل للحالة الغذائية أو دراسة الحالة الاجتماعية',
+      'خطة غذائية عصبية مخصصة أو خطة تعديل البيئة الأسرية',
+      'متابعة قياسات الوزن والمؤشرات الأيضية'
+    ],
+    cancelAnytimeNoticeAr: 'استرداد كامل 100% قبل 24 ساعة من الموعد'
+  },
+  {
+    id: 'pkg-nut-month',
+    nameAr: 'باقة الشهر (4 جلسات - خصم 5%)',
+    nameEn: 'Monthly Nutrition Plan (4 Sessions - 5% OFF)',
+    badge: 'الأكثر طلباً للتغذية ⭐',
+    sessionsCount: 4,
+    validityMonths: 1,
+    priceUSD: 113.89,
+    priceYER: 16300,
+    priceSAR: 427,
+    originalPriceUSD: 119.88,
+    saveAmountUSD: 6,
+    saveTextAr: 'وفّر 5% (فقط $28.47 للجلسة)',
+    isPopular: true,
+    descriptionAr: 'برنامج شهري متكامل لتعديل السلوك الغذائي، علاج اضطرابات الأكل، أو الاستشارات الأسرية.',
+    sessionDurationText: '4 جلسات أسبوعية مجدولة',
+    featuresAr: [
+      '4 جلسات متابعة أسبوعية وتعديل الجداول الغذائية',
+      'تواصل ومتابعة يوميات الوجبات والامتثال',
+      'خطة دعم استقرار البيئة الأسرية والاجتماعية'
+    ],
+    cancelAnytimeNoticeAr: 'إلغاء الاشتراك واسترداد الرصيد المتبقي في أي وقت'
+  },
+  {
+    id: 'pkg-nut-2months',
+    nameAr: 'باقة الشهرين (8 جلسات - خصم 10%)',
+    nameEn: '2-Month Nutrition Plan (8 Sessions - 10% OFF)',
+    badge: 'وفّر 10%',
+    sessionsCount: 8,
+    validityMonths: 2,
+    priceUSD: 215.78,
+    priceYER: 30900,
+    priceSAR: 809,
+    originalPriceUSD: 239.76,
+    saveAmountUSD: 24,
+    saveTextAr: 'وفّر 10% (فقط $26.97 للجلسة)',
+    isPopular: false,
+    descriptionAr: 'برنامج تثبيت الوزن الصحي وعلاج اضطرابات القولون العصبي المرتبط بالقلق والإرشاد الأسري.',
+    sessionDurationText: '8 جلسات موزعة على 8 أسابيع',
+    featuresAr: [
+      '8 جلسات متابعة مستمرة وتعديل الخطط',
+      'تحليل تفاعلي للوزن ومؤشرات النوم والنشاط',
+      'إرشاد أسري متخصص'
+    ],
+    cancelAnytimeNoticeAr: 'إلغاء واسترداد الرصيد المتبقي في أي وقت'
+  },
+  {
+    id: 'pkg-nut-3months',
+    nameAr: 'باقة 3 أشهر (12 جلسة - خصم 16% أقصى توفير)',
+    nameEn: '3-Month Nutrition Plan (12 Sessions - 16% OFF)',
+    badge: 'التحول الشامل ⭐',
+    sessionsCount: 12,
+    validityMonths: 3,
+    priceUSD: 302.04,
+    priceYER: 43200,
+    priceSAR: 1132,
+    originalPriceUSD: 359.64,
+    saveAmountUSD: 57.6,
+    saveTextAr: 'وفّر 16% أقصى خصم (فقط $25.17 للجلسة)',
+    isPopular: false,
+    descriptionAr: 'برنامج التحول ونمط الحياة المستدام لعلاج السمنة العاطفية، استقرار الأيض، والعلاقات الأسرية المستقرة.',
+    sessionDurationText: '12 جلسة موزعة على 12 أسبوعاً',
+    featuresAr: [
+      '12 جلسة متكاملة للرعاية التغذوية والاجتماعية',
+      'تنسيق مشترك مع الطبيب النفسي والمعالج السلوكي',
+      'متابعة وقائية مستمرة'
+    ],
+    cancelAnytimeNoticeAr: 'إلغاء واسترداد الرصيد المتبقي في أي وقت'
+  }
+];
+
+// القائمة الافتراضية الشاملة
+export const OFFICIAL_THERAPY_PACKAGES: TherapyPackage[] = PSYCHIATRY_THERAPY_PACKAGES;
 
 export const VALID_COUPONS: Coupon[] = [
   {
@@ -121,7 +222,7 @@ export const VALID_COUPONS: Coupon[] = [
   {
     code: 'HOPE20',
     discountPercent: 20,
-    descriptionAr: 'خصم 20% على حزمة أمل وحزمة رضا',
+    descriptionAr: 'خصم 20% على باقة الشهر وباقة 3 أشهر',
     isValid: true
   }
 ];
@@ -141,9 +242,9 @@ export const OFFICIAL_DOCTORS_TEAM: Doctor[] = [
     rating: 4.95,
     reviewsCount: 420,
     experienceYears: 12,
-    priceUSD: 39,
-    priceYER: 11700,
-    priceSAR: 146,
+    priceUSD: 39.97,
+    priceYER: 5700,
+    priceSAR: 150,
     activePatientsCount: 38,
     availableDays: ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء'],
     nextAvailableSlot: 'اليوم · 05:00 م',
@@ -167,9 +268,9 @@ export const OFFICIAL_DOCTORS_TEAM: Doctor[] = [
     rating: 4.98,
     reviewsCount: 512,
     experienceYears: 15,
-    priceUSD: 39,
-    priceYER: 11700,
-    priceSAR: 146,
+    priceUSD: 39.97,
+    priceYER: 5700,
+    priceSAR: 150,
     activePatientsCount: 45,
     availableDays: ['الأحد', 'الاثنين', 'الأربعاء', 'الخميس'],
     nextAvailableSlot: 'غداً · 04:00 م',
@@ -193,9 +294,9 @@ export const OFFICIAL_DOCTORS_TEAM: Doctor[] = [
     rating: 4.92,
     reviewsCount: 280,
     experienceYears: 9,
-    priceUSD: 29,
-    priceYER: 8700,
-    priceSAR: 109,
+    priceUSD: 29.97,
+    priceYER: 4300,
+    priceSAR: 112,
     activePatientsCount: 29,
     availableDays: ['السبت', 'الاثنين', 'الثلاثاء', 'الخميس'],
     nextAvailableSlot: 'اليوم · 06:30 م',
@@ -219,9 +320,9 @@ export const OFFICIAL_DOCTORS_TEAM: Doctor[] = [
     rating: 4.88,
     reviewsCount: 215,
     experienceYears: 11,
-    priceUSD: 29,
-    priceYER: 8700,
-    priceSAR: 109,
+    priceUSD: 29.97,
+    priceYER: 4300,
+    priceSAR: 112,
     activePatientsCount: 24,
     availableDays: ['الأحد', 'الثلاثاء', 'الأربعاء'],
     nextAvailableSlot: 'غداً · 07:00 م',
@@ -245,9 +346,9 @@ export const OFFICIAL_DOCTORS_TEAM: Doctor[] = [
     rating: 4.97,
     reviewsCount: 460,
     experienceYears: 14,
-    priceUSD: 39,
-    priceYER: 11700,
-    priceSAR: 146,
+    priceUSD: 39.97,
+    priceYER: 5700,
+    priceSAR: 150,
     activePatientsCount: 41,
     availableDays: ['السبت', 'الأحد', 'الاثنين', 'الأربعاء'],
     nextAvailableSlot: 'اليوم · 04:00 م',
@@ -271,9 +372,9 @@ export const OFFICIAL_DOCTORS_TEAM: Doctor[] = [
     rating: 5.0,
     reviewsCount: 680,
     experienceYears: 24,
-    priceUSD: 39,
-    priceYER: 11700,
-    priceSAR: 146,
+    priceUSD: 39.97,
+    priceYER: 5700,
+    priceSAR: 150,
     activePatientsCount: 52,
     availableDays: ['الأحد', 'الثلاثاء', 'الخميس'],
     nextAvailableSlot: 'الأحد · 05:30 م',
@@ -294,9 +395,9 @@ export const INITIAL_INVOICES: InvoiceRecord[] = [
     clientName: 'عميل المنصة (سري)',
     description: 'حجز جلسة علاج سلوكي معرفي (CBT) - أ. محمد المؤيد',
     doctorName: 'أ. محمد المؤيد',
-    amountUSD: 39,
-    amountYER: 11700,
-    amountSAR: 146,
+    amountUSD: 39.97,
+    amountYER: 5700,
+    amountSAR: 150,
     currency: 'USD',
     paymentMethod: 'بطاقة ائتمان (Visa)',
     transactionRef: 'TXN-VISA-994102',
@@ -308,10 +409,10 @@ export const INITIAL_INVOICES: InvoiceRecord[] = [
     date: '2026-09-20',
     clientCode: 'CM-984420',
     clientName: 'عميل المنصة (سري)',
-    description: 'اشتراك حزمة أمل (4 جلسات شهرية) - كود COOL50',
-    amountUSD: 69.5,
-    amountYER: 20850,
-    amountSAR: 260,
+    description: 'اشتراك باقة الشهر (4 جلسات) - كود COOL50',
+    amountUSD: 75.94,
+    amountYER: 10850,
+    amountSAR: 285,
     currency: 'USD',
     paymentMethod: 'كريمي جوالي (Kuraimi)',
     transactionRef: 'TXN-KUR-884102',
@@ -321,30 +422,21 @@ export const INITIAL_INVOICES: InvoiceRecord[] = [
 
 export const INITIAL_REVIEWS: DoctorReview[] = [
   {
-    id: 'rev-01',
+    id: 'rev-1',
     doctorId: 'doc-moayad',
-    clientCode: 'CM-2201',
-    clientAlias: 'سارة',
+    doctorName: 'أ. محمد المؤيد',
+    clientFirstName: 'سارة',
     rating: 5,
-    comment: 'تجربة غيرت حياتي.. أسلوب أ. محمد المؤيد إنساني وعلمي دقيق، ساعدني على التخلص من نوبات الهلع في 4 جلسات فقط.',
+    comment: 'تجربة فارقة جداً في حياتي، ساعدني أستاذ محمد في التخلص من نوبات الهلع في 4 جلسات فقط.',
     date: '2026-09-28'
   },
   {
-    id: 'rev-02',
-    doctorId: 'doc-amer',
-    clientCode: 'CM-3304',
-    clientAlias: 'أحمد',
-    rating: 5,
-    comment: 'د. محمد عامر استشاري استثنائي، تقنيات EMDR ساعدتني على تجاوز صدمة قديمة كنت أعاني منها لسنوات.',
-    date: '2026-09-25'
-  },
-  {
-    id: 'rev-03',
+    id: 'rev-2',
     doctorId: 'doc-seham',
-    clientCode: 'CM-5510',
-    clientAlias: 'فاطمة',
+    doctorName: 'د. سهام',
+    clientFirstName: 'عبدالله',
     rating: 5,
-    comment: 'د. سهام راقية جداً وصبورة في الاستماع، ضبطت لي العلاج الدوائي دون أي أعراض جانبية مزعجة.',
-    date: '2026-09-22'
+    comment: 'دكتورة متمكنة جداً ودقيقة في ضبط الجرعات، شعرت بتحسن كبير من الأسبوع الثاني.',
+    date: '2026-09-29'
   }
 ];

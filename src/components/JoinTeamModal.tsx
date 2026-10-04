@@ -288,7 +288,7 @@ export const JoinTeamModal: React.FC<Props> = ({ isOpen, onClose }) => {
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
                     {uploadedFileName ? uploadedFileName : 'انقر هنا لرفع ملف السيرة والترخيص'}
                   </span>
-                  <span className="text-[10px] text-slate-400">الحد الأقصى 10 ميجابايت</span>
+                  <span className="text-[10px] text-slate-400">الحد الأقصى 10 ميجابايت · أو أرسل مباشرة إلى <strong className="text-teal-600 font-mono">doctors@coolmindcenter.com</strong></span>
                 </label>
               </div>
             </div>

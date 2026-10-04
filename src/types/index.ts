@@ -262,8 +262,10 @@ export interface InvoiceRecord {
 export interface DoctorReview {
   id: string;
   doctorId: string;
-  clientCode: string;
-  clientAlias: string;
+  doctorName?: string;
+  clientCode?: string;
+  clientAlias?: string;
+  clientFirstName?: string;
   rating: number; // 1-5
   comment: string;
   date: string;
@@ -286,6 +288,13 @@ export interface ClinicSettings {
   clinicNameEn: string;
   clinicAddress: string;
   clinicEmail: string;
+  domainName?: string;
+  infoEmail?: string;
+  bookingEmail?: string;
+  supportEmail?: string;
+  reportsEmail?: string;
+  doctorsEmail?: string;
+  webmailUrl?: string;
   emergencyPhone: string;
   whatsappPhone: string;
   workingHoursAr: string;
@@ -531,13 +540,16 @@ export interface ClinicalFormTemplate {
   code: string;
   titleAr: string;
   descriptionAr: string;
-  category: 'فحص الحالة العقلية (MSE)' | 'المقابلة التشخيصية الأولى' | 'تقييم خطورة الانتحار' | 'تقرير جلسة علاجية (SOAP)';
+  category: string;
+  specialty?: 'psychiatry_psychology' | 'social_work' | 'clinical_nutrition' | 'general';
+  estimatedMinutes?: number;
   sections: {
     title: string;
+    description?: string;
     fields: {
       id: string;
       label: string;
-      type: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox_group';
+      type: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox_group' | 'number';
       options?: string[];
       placeholder?: string;
       defaultValue?: any;
@@ -552,6 +564,65 @@ export interface NutritionAssessment {
   summaryAr: string;
   targetNutrients: { name: string; benefit: string; foodSources: string; mentalHealthRole: string }[];
   clinicalChecklist: string[];
+}
+
+export interface GroupTherapyParticipant {
+  id: string;
+  aliasName: string; // اسم مستعار لحفظ السرية التامة
+  patientId?: string;
+  patientEmail?: string;
+  joinedDate: string;
+  attendanceCount: number;
+  paymentStatus: 'مدفوع' | 'معلق' | 'مسترد';
+  confidentialitySigned: boolean;
+  notes?: string;
+}
+
+export interface GroupTherapyProgram {
+  id: string;
+  titleAr: string;
+  titleEn: string;
+  category: string;
+  descriptionAr: string;
+  leadDoctorId: string;
+  leadDoctorName: string;
+  supervisorName: string;
+  maxCapacity: number;
+  enrolledCount: number;
+  sessionsCount: number;
+  scheduleText: string;
+  priceUSD: number;
+  priceYER: number;
+  priceSAR: number;
+  status: 'متاح للتسجيل' | 'قيد الانعقاد' | 'مكتمل' | 'مغلق';
+  startDate: string;
+  meetUrl?: string;
+  prerequisites: string;
+  rulesAgreementAr: string;
+  participants: GroupTherapyParticipant[];
+  materials?: {
+    id: string;
+    title: string;
+    type: string;
+    url?: string;
+    date: string;
+  }[];
+  sessionNotes?: {
+    sessionNumber: number;
+    date: string;
+    groupSummary: string;
+    attendanceAliases: string[];
+  }[];
+}
+
+export interface CustomFormField {
+  id: string;
+  label: string;
+  type: 'text' | 'textarea' | 'number' | 'select' | 'radio' | 'scale_1_10' | 'date';
+  targetForm: 'client_intake' | 'first_session' | 'followup_session' | 'group_intake';
+  options?: string[];
+  isRequired: boolean;
+  placeholder?: string;
 }
 
 export interface AppNotification {

@@ -13,7 +13,12 @@ import {
   Lock,
   Calendar,
   Sparkles,
-  Plus
+  Plus,
+  Apple,
+  Users,
+  Filter,
+  Search,
+  BookOpen
 } from 'lucide-react';
 import { Patient, SavedClinicalRecord, StaffUser } from '../types';
 import { CLINICAL_FORMS_TEMPLATES } from '../data/clinicalForms';
@@ -21,7 +26,7 @@ import { clinicalStorage } from '../services/clinicalRecords';
 
 interface Props {
   activePatient: Patient;
-  onOpenClinicalForm: (formType: 'mse' | 'suicide_risk' | 'soap_note') => void;
+  onOpenClinicalForm: (formType: string) => void;
   currentStaff?: StaffUser | null;
 }
 
@@ -30,9 +35,24 @@ export const ClinicalFormsView: React.FC<Props> = ({
   onOpenClinicalForm,
   currentStaff
 }) => {
+  const [selectedSpecialty, setSelectedSpecialty] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedRecordForView, setSelectedRecordForView] = useState<SavedClinicalRecord | null>(null);
 
   const patientRecords = clinicalStorage.getPatientRecords(activePatient.id);
+
+  const filteredTemplates = CLINICAL_FORMS_TEMPLATES.filter(tmpl => {
+    const matchesSpecialty = selectedSpecialty === 'all' || 
+      (selectedSpecialty === 'psychiatry_psychology' && tmpl.specialty === 'psychiatry_psychology') ||
+      (selectedSpecialty === 'social_work' && tmpl.specialty === 'social_work') ||
+      (selectedSpecialty === 'clinical_nutrition' && tmpl.specialty === 'clinical_nutrition');
+
+    const matchesSearch = tmpl.titleAr.includes(searchQuery) ||
+      tmpl.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tmpl.descriptionAr.includes(searchQuery);
+
+    return matchesSpecialty && matchesSearch;
+  });
 
   const handlePrintRecord = () => {
     window.print();
@@ -42,254 +62,201 @@ export const ClinicalFormsView: React.FC<Props> = ({
     <div className="space-y-6 text-right">
       
       {/* Top Banner */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xs transition-colors">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xs transition-colors">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950 text-teal-800 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800">
-                السجلات والبروتوكولات الإكلينيكية
+                السجلات والبروتوكولات السريرية للتخصصات الثلاثة
               </span>
-              <span className="text-xs text-slate-400">Clinical EHR & Mental Status</span>
+              <span className="text-xs text-slate-400">Integrated Clinical Forms</span>
             </div>
             <h1 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-              النماذج الإكلينيكية وفحص الحالة العقلية
+              نماذج الجلسات والتقييم الإكلينيكي المعتمد
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              نماذج المقابلة التشخيصية، تقييم خطورة الانتحار وإيذاء النفس، وملاحظات تقدم الجلسات العلاجية مع الحفظ الفوري في السجل
+              منظومة التوثيق السريري الشامل: الطب والعلاج النفسي (MSE / SOAP / C-SSRS / CBT)، الخدمة الاجتماعية والإرشاد الأسري، والتغذية العلاجية ومحور الأمعاء-الدماغ.
             </p>
           </div>
 
-          <div className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3.5 py-2 rounded-xl">
-            المريض المحدد: <strong className="text-slate-900 dark:text-white">{activePatient.name}</strong> ({activePatient.fileNumber})
+          <div className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 rounded-2xl shrink-0">
+            المريض النشط: <strong className="text-slate-900 dark:text-white">{activePatient.name}</strong> ({activePatient.fileNumber})
+          </div>
+        </div>
+
+        {/* Filter Bar */}
+        <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+            {[
+              { id: 'all', label: 'جميع النماذج (8)', icon: FileText },
+              { id: 'psychiatry_psychology', label: 'الطب والعلاج النفسي', icon: Stethoscope },
+              { id: 'social_work', label: 'الخدمة الاجتماعية والإرشاد الأسري', icon: Users },
+              { id: 'clinical_nutrition', label: 'التغذية العلاجية والصحة العصبية', icon: Apple },
+            ].map(tab => {
+              const Icon = tab.icon;
+              const isActive = selectedSpecialty === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setSelectedSpecialty(tab.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+                    isActive
+                      ? 'bg-teal-700 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="relative w-full sm:w-64">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="ابحث في النماذج والرموز..."
+              className="w-full pl-3 pr-8 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-hidden"
+            />
+            <Search className="w-3.5 h-3.5 absolute right-2.5 top-2.5 text-slate-400" />
           </div>
         </div>
       </div>
 
-      {/* Main Forms Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
-        {/* MSE Card */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-400 rounded-2xl p-6 shadow-2xs flex flex-col justify-between transition-all group">
-          <div>
-            <div className="w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-400 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-              <ClipboardCheck className="w-6 h-6" />
+      {/* Main Forms Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {filteredTemplates.map(tmpl => {
+          const isPsych = tmpl.specialty === 'psychiatry_psychology';
+          const isSocial = tmpl.specialty === 'social_work';
+          const isNutr = tmpl.specialty === 'clinical_nutrition';
+
+          let iconBg = 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-400';
+          let borderAccent = 'hover:border-teal-400';
+          let btnColor = 'bg-teal-700 hover:bg-teal-800';
+
+          if (tmpl.id === 'suicide_risk') {
+            iconBg = 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400';
+            borderAccent = 'hover:border-rose-400';
+            btnColor = 'bg-rose-600 hover:bg-rose-700';
+          } else if (isSocial) {
+            iconBg = 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400';
+            borderAccent = 'hover:border-indigo-400';
+            btnColor = 'bg-indigo-600 hover:bg-indigo-700';
+          } else if (isNutr) {
+            iconBg = 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400';
+            borderAccent = 'hover:border-emerald-400';
+            btnColor = 'bg-emerald-600 hover:bg-emerald-700';
+          }
+
+          return (
+            <div
+              key={tmpl.id}
+              className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 ${borderAccent} rounded-3xl p-5 shadow-2xs flex flex-col justify-between transition-all group`}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`w-10 h-10 rounded-2xl ${iconBg} flex items-center justify-center font-bold group-hover:scale-105 transition-transform`}>
+                    {tmpl.id === 'suicide_risk' ? (
+                      <ShieldAlert className="w-5 h-5" />
+                    ) : isSocial ? (
+                      <Users className="w-5 h-5" />
+                    ) : isNutr ? (
+                      <Apple className="w-5 h-5" />
+                    ) : (
+                      <ClipboardCheck className="w-5 h-5" />
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                      {tmpl.code}
+                    </span>
+                    {tmpl.estimatedMinutes && (
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        ~{tmpl.estimatedMinutes} دقيقة
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <span className="text-[10px] font-bold text-teal-700 dark:text-teal-400 block mb-1">
+                  {tmpl.category}
+                </span>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2 line-clamp-2">
+                  {tmpl.titleAr}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-4 line-clamp-3">
+                  {tmpl.descriptionAr}
+                </p>
+              </div>
+
+              <button
+                onClick={() => onOpenClinicalForm(tmpl.id)}
+                className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 ${btnColor} text-white rounded-2xl text-xs font-bold transition-all shadow-xs cursor-pointer`}
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>تعبئة وتوثيق النموذج الآن</span>
+              </button>
             </div>
-
-            <span className="text-xs font-mono font-bold text-teal-700 dark:text-teal-400 block mb-1">MSE-STD</span>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-              فحص الحالة العقلية الشامل (MSE)
-            </h2>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
-              التقييم السريري الراهن للمظهر العام، السلوك الحركي، المزاج، الوجدان، مجرى ومحتوى التفكير، الإدراك الحسي، والبصيرة والحكم.
-            </p>
-
-            <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 text-xs text-slate-500 dark:text-slate-400 space-y-1 mb-4">
-              <div>✓ 6 أبعاد سريرية معتمدة</div>
-              <div>✓ توثيق الضلالات والهلاوس والبصيرة</div>
-              <div>✓ تصدير وحفظ فوري في ملف المريض</div>
-            </div>
-          </div>
-
-          <button
-            onClick={() => onOpenClinicalForm('mse')}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>تعبئة فحص الحالة العقلية الآن</span>
-          </button>
-        </div>
-
-        {/* Suicide Risk Protocol Card */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-rose-400 rounded-2xl p-6 shadow-2xs flex flex-col justify-between transition-all group">
-          <div>
-            <div className="w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-              <ShieldAlert className="w-6 h-6" />
-            </div>
-
-            <span className="text-xs font-mono font-bold text-rose-600 dark:text-rose-400 block mb-1">C-SSRS PROTOCOL</span>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-              بروتوكول تقييم خطورة الانتحار وإيذاء النفس
-            </h2>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
-              تقييم الأفكار والنوايا والخطط الانتحارية، استكشاف الروادع وعوامل الحماية، وصياغة خطة الأمان الإلزامية (Safety Plan).
-            </p>
-
-            <div className="bg-rose-50/50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900 rounded-xl p-3 text-xs text-rose-900 dark:text-rose-300 space-y-1 mb-4">
-              <div>⚠️ معتمد لبروتوكول كولومبيا (C-SSRS)</div>
-              <div>✓ خطة أمان مكتوبة وروادع أسرية</div>
-              <div>✓ توثيق كسر السرية والتدخل الطارئ</div>
-            </div>
-          </div>
-
-          <button
-            onClick={() => onOpenClinicalForm('suicide_risk')}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-          >
-            <ShieldAlert className="w-3.5 h-3.5" />
-            <span>تشغيل بروتوكول تقييم الخطورة</span>
-          </button>
-        </div>
-
-        {/* SOAP Note Card */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-400 rounded-2xl p-6 shadow-2xs flex flex-col justify-between transition-all group">
-          <div>
-            <div className="w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-400 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-              <FileText className="w-6 h-6" />
-            </div>
-
-            <span className="text-xs font-mono font-bold text-teal-700 dark:text-teal-400 block mb-1">SOAP-NOTE</span>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-              تقرير تقدم الجلسة العلاجية (SOAP)
-            </h2>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
-              توثيق منظم لمعطيات المريض الذاتية (S)، الملاحظات الموضوعية (O)، التقييم الإكلينيكي للتقدم (A)، وخطة التدخل والواجبات (P).
-            </p>
-
-            <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 text-xs text-slate-500 dark:text-slate-400 space-y-1 mb-4">
-              <div>✓ النموذج القياسي للتوثيق الطبي</div>
-              <div>✓ ربط بالأهداف العلاجية والواجبات</div>
-              <div>✓ حفظ وتوقيع إلكتروني للمختص</div>
-            </div>
-          </div>
-
-          <button
-            onClick={() => onOpenClinicalForm('soap_note')}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>توثيق جلسة علاجية (SOAP)</span>
-          </button>
-        </div>
-
+          );
+        })}
       </div>
 
       {/* Saved Records History for Active Patient */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-2xs space-y-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xs space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-              سجل النماذج المعتمدة للمريض {activePatient.name}
+              السجلات المعتمدة المحفوظة للمريض: {activePatient.name}
             </h3>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              جميع النماذج محفوظة ومشفرة ومرتبطة بملف المريض برقم تسلسلي معتمد
+              جميع السجلات مشفرة وموثقة بختم رسمي ورقم تسلسلي غير قابل للتعديل بعد الاعتماد
             </p>
           </div>
-          <span className="text-xs text-teal-700 dark:text-teal-400 font-bold">
+          <span className="text-xs text-teal-700 dark:text-teal-400 font-bold bg-teal-50 dark:bg-teal-950 px-2.5 py-1 rounded-xl">
             {patientRecords.length} سجلات موثقة
           </span>
         </div>
 
         {patientRecords.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-6">
-            لا توجد نماذج سابقة محفوظة لهذا المريض. استخدم الأزرار أعلاه لتعبئة أول نموذج.
-          </p>
+          <div className="text-center py-8 text-slate-400 text-xs">
+            لا توجد سجلات ونماذج سابقة محفوظة لهذا المريض بعد. اختر أحد النماذج أعلاه لبدء التوثيق.
+          </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {patientRecords.map(rec => (
               <div
                 key={rec.id}
-                className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-4 text-xs"
+                className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between gap-3 text-xs"
               >
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-teal-700 dark:text-teal-400 font-bold">{rec.recordNumber}</span>
-                    <strong className="text-slate-900 dark:text-white">{rec.titleAr}</strong>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-teal-700 dark:text-teal-400 font-bold text-[11px]">
+                      {rec.recordNumber}
+                    </span>
+                    <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded-md">
+                      ✓ {rec.status}
+                    </span>
                   </div>
-                  <p className="text-slate-600 dark:text-slate-300 text-[11px]">{rec.summaryText}</p>
-                  <div className="text-[10px] text-slate-400 flex items-center gap-2">
-                    <span>التاريخ: {rec.date}</span>
-                    <span>·</span>
-                    <span>المختص: {rec.doctorName}</span>
-                  </div>
+                  <strong className="text-slate-900 dark:text-white block text-sm">
+                    {rec.titleAr}
+                  </strong>
+                  <p className="text-slate-600 dark:text-slate-300 text-[11px] line-clamp-2">
+                    {rec.summaryText}
+                  </p>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedRecordForView(rec)}
-                    className="px-3 py-1.5 bg-teal-700 text-white rounded-xl text-xs font-bold hover:bg-teal-800 transition-colors flex items-center gap-1 cursor-pointer"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>عرض وطباعة</span>
-                  </button>
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-[10px] text-slate-500">
+                  <span>المختص: <strong>{rec.doctorName}</strong></span>
+                  <span>التاريخ: {rec.date}</span>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
-
-      {/* Record View Modal */}
-      {selectedRecordForView && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-8 text-right space-y-6 shadow-2xl border border-slate-200 text-slate-900 max-h-[90vh] overflow-y-auto">
-            
-            <div className="flex items-center justify-between border-b-2 border-teal-700 pb-4">
-              <div>
-                <h2 className="text-lg font-black text-slate-900">منصة CoolMind للاستشارات النفسية</h2>
-                <p className="text-xs text-slate-500">توثيق إكلينيكي رسمي وفحص الحالة العقلية</p>
-              </div>
-              <div className="text-left text-xs">
-                <div className="font-mono font-bold text-teal-700">{selectedRecordForView.recordNumber}</div>
-                <div className="text-slate-500">{selectedRecordForView.date}</div>
-              </div>
-            </div>
-
-            <div className="text-center">
-              <h3 className="text-base font-black underline text-teal-950">{selectedRecordForView.titleAr}</h3>
-            </div>
-
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-2 gap-2 text-xs">
-              <div>المريض: <strong>{selectedRecordForView.patientName}</strong></div>
-              <div>رقم الملف: <strong className="font-mono">{selectedRecordForView.patientFileNumber}</strong></div>
-              <div>المختص: <strong>{selectedRecordForView.doctorName}</strong></div>
-              <div>الترخيص: <strong className="font-mono">{selectedRecordForView.doctorLicenseNumber}</strong></div>
-            </div>
-
-            <div className="space-y-3 text-xs leading-relaxed">
-              <div className="font-bold text-slate-800">بيانات التقييم السريري:</div>
-              <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                {Object.entries(selectedRecordForView.formData || {}).map(([key, val]) => (
-                  <div key={key} className="border-b border-slate-200 pb-1.5 last:border-none">
-                    <span className="font-bold text-teal-900 block">{key}:</span>
-                    <span className="text-slate-700">{String(val)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
-              <div>
-                <div className="text-xs font-bold text-slate-900">التوقيع الإلكتروني:</div>
-                <div className="text-xs text-teal-800 mt-1 font-bold">{selectedRecordForView.signatureText}</div>
-              </div>
-
-              <div className="border border-teal-600 rounded-lg p-2 text-center text-teal-800 text-[10px] font-bold">
-                ✓ موثق ومعتمد رسمياً
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setSelectedRecordForView(null)}
-                className="px-4 py-2 text-xs text-slate-600 font-bold cursor-pointer"
-              >
-                إغلاق
-              </button>
-              <button
-                type="button"
-                onClick={handlePrintRecord}
-                className="px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer"
-              >
-                <Printer className="w-4 h-4" />
-                <span>طباعة</span>
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
 
     </div>
   );

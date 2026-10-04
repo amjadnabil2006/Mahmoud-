@@ -23,7 +23,8 @@ import {
   Trash2,
   RotateCcw,
   SlidersHorizontal,
-  Settings
+  Settings,
+  DollarSign
 } from 'lucide-react';
 import { Doctor, Patient, ClinicAnalytics, AuditLog, Appointment, TherapyExercise, ClinicSettings } from '../types';
 import { Department, CLINICAL_DEPARTMENTS, getDepartmentColorStyles } from '../data/departments';
@@ -31,9 +32,20 @@ import { DepartmentIcon } from '../components/DepartmentIcon';
 import { AdminSettingsTab } from '../components/admin/AdminSettingsTab';
 import { AdminAppointmentsTab } from '../components/admin/AdminAppointmentsTab';
 import { AdminExercisesTab } from '../components/admin/AdminExercisesTab';
+import { AdminFinancialsTab } from '../components/admin/AdminFinancialsTab';
+import { AdminReportsTab } from '../components/admin/AdminReportsTab';
+import { AdminGroupTherapyTab } from '../components/admin/AdminGroupTherapyTab';
+import { AdminFormBuilderTab } from '../components/admin/AdminFormBuilderTab';
+import { AdminRBACControlTab } from '../components/admin/AdminRBACControlTab';
+import { AdminClinicalInspectModal } from '../components/admin/AdminClinicalInspectModal';
 import { api, INITIAL_SETTINGS } from '../services/api';
 
 export type AdminTabId = 
+  | 'financials'
+  | 'reports'
+  | 'group_therapy'
+  | 'form_builder'
+  | 'rbac_matrix'
   | 'settings' 
   | 'departments' 
   | 'doctors' 
@@ -53,6 +65,8 @@ interface Props {
   exercises?: TherapyExercise[];
   settings?: ClinicSettings;
   auditLogs: AuditLog[];
+  scaleResults?: any[];
+  prescriptions?: any[];
   onAddNewDoctor: (doctor: Omit<Doctor, 'id'>) => void;
   onUpdateDoctor?: (id: string, updated: Partial<Doctor>) => Promise<void>;
   onDeleteDoctor?: (id: string) => Promise<void>;
@@ -71,6 +85,7 @@ interface Props {
   onDeleteDepartment?: (id: string) => Promise<void>;
   onResetDepartments?: () => Promise<void>;
   onOpenDepartmentManagerModal?: (dept?: Department) => void;
+  onLogAudit?: (action: string, target: string) => void;
 }
 
 export const AdminPortalView: React.FC<Props> = ({
@@ -82,6 +97,8 @@ export const AdminPortalView: React.FC<Props> = ({
   exercises = [],
   settings = INITIAL_SETTINGS,
   auditLogs,
+  scaleResults = [],
+  prescriptions = [],
   onAddNewDoctor,
   onUpdateDoctor,
   onDeleteDoctor,
@@ -100,8 +117,10 @@ export const AdminPortalView: React.FC<Props> = ({
   onDeleteDepartment,
   onResetDepartments,
   onOpenDepartmentManagerModal,
+  onLogAudit,
 }) => {
-  const [activeTab, setActiveTab] = useState<AdminTabId>('settings');
+  const [activeTab, setActiveTab] = useState<AdminTabId>('financials');
+  const [isClinicalInspectOpen, setIsClinicalInspectOpen] = useState<boolean>(false);
   
   // API Explorer state
   const [selectedEndpoint, setSelectedEndpoint] = useState<string>('GET /api/v1/patients');
@@ -249,6 +268,13 @@ export const AdminPortalView: React.FC<Props> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsClinicalInspectOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-xs rounded-xl shadow-sm transition-all"
+            >
+              <Lock className="w-4 h-4" />
+              الاطلاع السريري المطلق الموثق
+            </button>
             <span className="text-xs font-mono font-bold text-teal-300 bg-teal-950/80 border border-teal-800 px-3 py-1.5 rounded-xl">
               ● API v1.4 Online
             </span>
@@ -259,6 +285,11 @@ export const AdminPortalView: React.FC<Props> = ({
       {/* Admin Navigation Tabs */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-1.5 flex items-center gap-1 overflow-x-auto shadow-2xs">
         {[
+          { id: 'financials', label: 'العائدات والمالية (75%/25%)', icon: DollarSign },
+          { id: 'reports', label: 'التقارير والإحصائيات التفاعلية', icon: FileText },
+          { id: 'group_therapy', label: 'إدارة العلاج الجماعي', icon: Users },
+          { id: 'form_builder', label: 'منشئ النماذج والاستبيانات', icon: Terminal },
+          { id: 'rbac_matrix', label: 'التحكم بالصلاحيات والواجهات', icon: KeyRound },
           { id: 'settings', label: 'إعدادات الموقع والمنصة', icon: Settings },
           { id: 'departments', label: 'إدارة الأقسام الطبية', icon: Layers },
           { id: 'doctors', label: 'إدارة الأطباء والكادر', icon: Stethoscope },
@@ -267,7 +298,7 @@ export const AdminPortalView: React.FC<Props> = ({
           { id: 'exercises', label: 'التمارين والمهام السلوكية', icon: Activity },
           { id: 'kpis', label: 'المؤشرات العامة (KPIs)', icon: TrendingUp },
           { id: 'audit_logs', label: 'سجلات التدقيق والأمان (HIPAA)', icon: ShieldCheck },
-          { id: 'api_explorer', label: 'مستكشف الـ API وقاعدة البيانات', icon: Terminal },
+          { id: 'api_explorer', label: 'مستكشف الـ API', icon: Database },
         ].map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -287,6 +318,48 @@ export const AdminPortalView: React.FC<Props> = ({
           );
         })}
       </div>
+
+      {/* TAB: FINANCIALS & REVENUE */}
+      {activeTab === 'financials' && (
+        <AdminFinancialsTab
+          appointments={appointments}
+          doctors={doctors}
+          onLogAudit={onLogAudit}
+        />
+      )}
+
+      {/* TAB: CLINICAL & BUSINESS REPORTS */}
+      {activeTab === 'reports' && (
+        <AdminReportsTab
+          appointments={appointments}
+          doctors={doctors}
+          patients={patients}
+          scaleResults={scaleResults}
+          auditLogs={auditLogs}
+        />
+      )}
+
+      {/* TAB: GROUP THERAPY MANAGEMENT */}
+      {activeTab === 'group_therapy' && (
+        <AdminGroupTherapyTab
+          doctors={doctors}
+          onLogAudit={onLogAudit}
+        />
+      )}
+
+      {/* TAB: FORM BUILDER */}
+      {activeTab === 'form_builder' && (
+        <AdminFormBuilderTab
+          onLogAudit={onLogAudit}
+        />
+      )}
+
+      {/* TAB: RBAC MATRIX */}
+      {activeTab === 'rbac_matrix' && (
+        <AdminRBACControlTab
+          onLogAudit={onLogAudit}
+        />
+      )}
 
       {/* TAB: SITE & PLATFORM SETTINGS */}
       {activeTab === 'settings' && (
@@ -1310,6 +1383,17 @@ export const AdminPortalView: React.FC<Props> = ({
           </div>
         </div>
       )}
+
+      {/* Admin Audited Clinical Inspection Modal */}
+      <AdminClinicalInspectModal
+        isOpen={isClinicalInspectOpen}
+        onClose={() => setIsClinicalInspectOpen(false)}
+        patients={patients}
+        doctors={doctors}
+        scaleResults={scaleResults}
+        prescriptions={prescriptions}
+        onLogAudit={onLogAudit || (() => {})}
+      />
 
     </div>
   );

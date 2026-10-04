@@ -45,7 +45,8 @@ import {
   Lock,
   Star,
   Zap,
-  Globe
+  Globe,
+  Users2
 } from 'lucide-react';
 import { 
   Patient, 
@@ -95,6 +96,7 @@ import { InvoicesTab } from '../components/InvoicesTab';
 import { SelfHelpToolsModal } from '../components/SelfHelpToolsModal';
 import { DoctorRatingModal } from '../components/DoctorRatingModal';
 import { ChangeDoctorModal } from '../components/ChangeDoctorModal';
+import { GroupTherapyModal } from '../components/GroupTherapyModal';
 
 export type PatientTabId = 'departments' | 'overview' | 'appointments' | 'records' | 'invoices' | 'scales' | 'exercises' | 'messages' | 'account';
 
@@ -177,6 +179,7 @@ export const PatientPortalView: React.FC<Props> = ({
   const [isInstantModalOpen, setIsInstantModalOpen] = useState(false);
   const [isSelfHelpModalOpen, setIsSelfHelpModalOpen] = useState(false);
   const [isB2BModalOpen, setIsB2BModalOpen] = useState(false);
+  const [isGroupTherapyModalOpen, setIsGroupTherapyModalOpen] = useState(false);
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const [doctorToRate, setDoctorToRate] = useState<Doctor | null>(null);
   const [isChangeDoctorModalOpen, setIsChangeDoctorModalOpen] = useState(false);
@@ -458,6 +461,14 @@ export const PatientPortalView: React.FC<Props> = ({
                 >
                   <Zap className="w-4 h-4" />
                   <span>استشارة فورية (~15 دقيقة)</span>
+                </button>
+
+                <button
+                  onClick={() => setIsGroupTherapyModalOpen(true)}
+                  className="px-6 py-3.5 bg-purple-600 hover:bg-purple-500 text-white font-black text-sm rounded-2xl shadow-lg shadow-purple-600/30 transition flex items-center gap-2"
+                >
+                  <Users2 className="w-4 h-4" />
+                  <span>جلسات العلاج الجماعي</span>
                 </button>
 
                 <button
@@ -1050,6 +1061,14 @@ export const PatientPortalView: React.FC<Props> = ({
         onClose={() => setIsChangeDoctorModalOpen(false)}
         currentDoctorId={selectedDoctorId}
         onConfirmChange={(newDoc) => setSelectedDoctorId(newDoc.id)}
+      />
+
+      <GroupTherapyModal
+        isOpen={isGroupTherapyModalOpen}
+        onClose={() => setIsGroupTherapyModalOpen(false)}
+        onJoinSuccess={(title, alias) => {
+          alert(`تم تأكيد انضمامك لبرنامج العلاج الجماعي "${title}" باسمك المستعار "${alias}" بنجاح.`);
+        }}
       />
 
       {/* Footer */}

@@ -9,7 +9,8 @@ import {
   Sparkles, 
   Video, 
   ExternalLink,
-  PhoneCall
+  PhoneCall,
+  AlertTriangle
 } from 'lucide-react';
 import { Doctor, Appointment, Patient } from '../types';
 import { OFFICIAL_DOCTORS_TEAM } from '../data/packagesAndCoupons';
@@ -19,18 +20,21 @@ interface Props {
   onClose: () => void;
   activePatient: Patient;
   onCompleteBooking: (appointment: Omit<Appointment, 'id'>) => void;
+  onOpenInstantPolicy?: () => void;
 }
 
 export const InstantConsultationModal: React.FC<Props> = ({
   isOpen,
   onClose,
   activePatient,
-  onCompleteBooking
+  onCompleteBooking,
+  onOpenInstantPolicy
 }) => {
   const [stage, setStage] = useState<'details' | 'matching' | 'ready'>('details');
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor>(OFFICIAL_DOCTORS_TEAM[0]);
   const [matchCountdown, setMatchCountdown] = useState(15);
   const [meetUrl, setMeetUrl] = useState('');
+  const [agreeInstantTerms, setAgreeInstantTerms] = useState<boolean>(true);
 
   useEffect(() => {
     let timer: any = null;
@@ -76,7 +80,7 @@ export const InstantConsultationModal: React.FC<Props> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-md animate-fadeIn" dir="rtl">
       <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -88,7 +92,7 @@ export const InstantConsultationModal: React.FC<Props> = ({
               <p className="text-[11px] text-slate-900/80 font-bold">تحدث مع أول طبيب أو معالج متاح خلال ~15 دقيقة</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 text-slate-950 hover:bg-slate-950/10 rounded-lg">
+          <button onClick={onClose} className="p-1.5 text-slate-950 hover:bg-slate-950/10 rounded-lg cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -99,7 +103,7 @@ export const InstantConsultationModal: React.FC<Props> = ({
               <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-2xl border border-amber-200 dark:border-amber-800/60 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-amber-900 dark:text-amber-200">المدة والتسعيرة المعتمدة:</span>
-                  <span className="text-base font-black text-slate-900 dark:text-slate-100">$39 (11,700 YER)</span>
+                  <span className="text-base font-black text-slate-900 dark:text-slate-100 font-mono">$39.97 (11,700 YER)</span>
                 </div>
                 <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
                   جلسة استشارية عاجلة ومباشرة مدتها <strong>30 دقيقة</strong> للتعامل مع نوبات القلق والضغوط الحادة وإرشادك للخطوات الطبية التالية.
@@ -113,20 +117,37 @@ export const InstantConsultationModal: React.FC<Props> = ({
                 </div>
                 <div className="flex items-center gap-2">
                   <RotateCcw className="w-4 h-4 text-teal-600 shrink-0" />
-                  <span><strong>استرداد تلقائي وفوري 100%:</strong> في حال تعذر تعيين طبيب خلال 15 دقيقة يتم إلغاء الدفع واسترجاع المبلغ فوراً.</span>
+                  <span><strong>استرداد كامل 100%:</strong> في حال تعذر توفر مختص مناوب أو حدوث خلل تقني يتم إلغاء الدفع واسترجاع المبلغ فوراً.</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>جلسة مرئية أو صوتية مشفرة بالكامل.</span>
+                  <span>جلسة مرئية أو صوتية مشفرة بالكامل بدون تسجيل لحفظ الخصوصية.</span>
                 </div>
               </div>
 
+              <label className="flex items-start gap-2 p-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreeInstantTerms}
+                  onChange={(e) => setAgreeInstantTerms(e.target.checked)}
+                  className="rounded text-amber-600 focus:ring-amber-500 mt-0.5"
+                />
+                <span className="text-[11px] text-slate-600 dark:text-slate-400">
+                  أقر بأن وقت الانتظار تقديري، وأن الجلسة الفورية مخصصة للدعم اللحظي وليست بديلاً عن الطوارئ الطبية الإسعافية في المستشفيات.
+                </span>
+              </label>
+
               <button
+                disabled={!agreeInstantTerms}
                 onClick={() => setStage('matching')}
-                className="w-full py-3.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2"
+                className={`w-full py-3.5 font-black text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer ${
+                  agreeInstantTerms
+                    ? 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+                    : 'bg-slate-300 dark:bg-slate-700 text-slate-500 cursor-not-allowed'
+                }`}
               >
                 <Zap className="w-4 h-4" />
-                <span>دفع $39 والبحث عن معالج متاح الآن</span>
+                <span>دفع $39.97 والبحث عن معالج متاح الآن</span>
               </button>
             </div>
           )}

@@ -18,14 +18,21 @@ import { Department, CLINICAL_DEPARTMENTS } from '../data/departments';
 
 export const INITIAL_SETTINGS: ClinicSettings = {
   // Identity & Contact
-  clinicNameAr: 'عيادات CoolMind للطب النفسي والرعاية المتكاملة',
-  clinicNameEn: 'CoolMind Psychiatric & Integrative Clinic',
-  clinicAddress: 'المملكة العربية السعودية، الرياض، طريق الملك فهد - برج الرعاية الطبية',
-  clinicEmail: 'care@coolmind.clinic',
-  emergencyPhone: '920000000',
-  whatsappPhone: '+966500000000',
-  workingHoursAr: 'يومياً من 08:00 ص حتى 11:00 م (جلسات حضورية وعن بعد)',
-  defaultCurrency: 'SAR',
+  clinicNameAr: 'مركز CoolMind للرعاية النفسية والاستشارات المتكاملة',
+  clinicNameEn: 'CoolMind Center for Psychological & Integrative Care',
+  clinicAddress: 'المركز الرئيسي: صنعاء - حدة · المملكة العربية السعودية: الرياض · استشارات دولية عن بُعد',
+  clinicEmail: 'info@coolmindcenter.com',
+  domainName: 'coolmindcenter.com',
+  infoEmail: 'info@coolmindcenter.com',
+  bookingEmail: 'booking@coolmindcenter.com',
+  supportEmail: 'support@coolmindcenter.com',
+  reportsEmail: 'reports@coolmindcenter.com',
+  doctorsEmail: 'doctors@coolmindcenter.com',
+  webmailUrl: 'https://cpl102.main-hosting.eu:2096/',
+  emergencyPhone: '+967770112233',
+  whatsappPhone: '+967770112233',
+  workingHoursAr: 'يومياً على مدار 24 ساعة (استشارات حضورية وعن بعد)',
+  defaultCurrency: 'USD',
 
   // Hero Section
   heroHeadline: 'الرعاية النفسية المتكاملة.. تشخيص طبي، علاج معرفي، وتغذية متخصصة',

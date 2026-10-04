@@ -12,6 +12,7 @@ import { SelfDiagnosticTriageModal } from './components/SelfDiagnosticTriageModa
 import { StaffAuthModal } from './components/StaffAuthModal';
 import { JoinTeamModal } from './components/JoinTeamModal';
 import { DoctorPatientFileModal } from './components/DoctorPatientFileModal';
+import { GroupTherapyModal } from './components/GroupTherapyModal';
 
 import { PatientPortalView } from './views/PatientPortalView';
 import { AdminPortalView } from './views/AdminPortalView';
@@ -113,7 +114,7 @@ export default function App() {
   const [selectedPrescriptionForView, setSelectedPrescriptionForView] = useState<Prescription | null>(null);
 
   const [isClinicalFormModalOpen, setIsClinicalFormModalOpen] = useState<boolean>(false);
-  const [clinicalFormType, setClinicalFormType] = useState<'mse' | 'suicide_risk' | 'soap_note'>('mse');
+  const [clinicalFormType, setClinicalFormType] = useState<string>('mse');
 
   const [isPatientFileModalOpen, setIsPatientFileModalOpen] = useState(false);
   const [selectedPatientForFile, setSelectedPatientForFile] = useState<Patient>(INITIAL_PATIENTS[0]);
@@ -125,6 +126,7 @@ export default function App() {
   const [bookingInitialFormat, setBookingInitialFormat] = useState<any>('video');
   const [bookingInitialStep, setBookingInitialStep] = useState<1 | 2>(1);
   const [isSelfDiagnosticModalOpen, setIsSelfDiagnosticModalOpen] = useState<boolean>(false);
+  const [isGroupTherapyModalOpen, setIsGroupTherapyModalOpen] = useState<boolean>(false);
   const [patientTab, setPatientTab] = useState<any>('departments');
 
   // Sync theme with document element
@@ -194,7 +196,7 @@ export default function App() {
     setIsScaleRunnerModalOpen(true);
   };
 
-  const handleOpenClinicalForm = (formType: 'mse' | 'suicide_risk' | 'soap_note') => {
+  const handleOpenClinicalForm = (formType: string = 'mse') => {
     setClinicalFormType(formType);
     setIsClinicalFormModalOpen(true);
   };
@@ -764,6 +766,20 @@ export default function App() {
               exercises={exercises}
               settings={clinicSettings}
               auditLogs={auditLogs}
+              scaleResults={scaleResults}
+              prescriptions={prescriptions}
+              onLogAudit={async (action, target) => {
+                await api.auditLogs.log({
+                  actorName: currentStaff?.name || 'مدير النظام (Super Admin)',
+                  actorRole: 'إدارة عليا',
+                  action,
+                  target,
+                  ipAddress: '192.168.1.1',
+                  status: 'نجاح'
+                });
+                const updatedLogs = await api.auditLogs.getAll();
+                setAuditLogs(updatedLogs);
+              }}
               onAddNewDoctor={handleAddNewDoctor}
               onUpdateDoctor={handleUpdateDoctor}
               onDeleteDoctor={handleDeleteDoctor}
@@ -917,6 +933,14 @@ export default function App() {
         }}
         onLaunchRecommendedScale={(scaleId) => {
           handleOpenScaleRunner(scaleId);
+        }}
+      />
+
+      <GroupTherapyModal
+        isOpen={isGroupTherapyModalOpen}
+        onClose={() => setIsGroupTherapyModalOpen(false)}
+        onJoinSuccess={(title, alias) => {
+          alert(`تم تأكيد انضمامك لبرنامج "${title}" باسمك المستعار "${alias}" بنجاح.`);
         }}
       />
 
