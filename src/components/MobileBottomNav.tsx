@@ -19,6 +19,7 @@ interface Props {
   theme: ThemeMode;
   onToggleTheme: () => void;
   onOpenBooking?: () => void;
+  onOpenChatModal?: () => void;
   unreadChatCount?: number;
 }
 
@@ -30,6 +31,7 @@ export const MobileBottomNav: React.FC<Props> = ({
   theme,
   onToggleTheme,
   onOpenBooking,
+  onOpenChatModal,
   unreadChatCount = 0
 }) => {
   const isDepartmentsActive = activePortal === 'patient' && patientTab === 'departments';
@@ -78,8 +80,12 @@ export const MobileBottomNav: React.FC<Props> = ({
       {/* 3. Direct Live Chat with Doctors - With Highlight State */}
       <button
         onClick={() => {
-          setActivePortal('patient');
-          if (onSelectPatientTab) onSelectPatientTab('messages');
+          if (onOpenChatModal) {
+            onOpenChatModal();
+          } else {
+            setActivePortal('patient');
+            if (onSelectPatientTab) onSelectPatientTab('messages');
+          }
         }}
         className={`relative flex flex-col items-center justify-center min-w-[50px] min-h-[44px] py-1 px-1.5 rounded-xl transition-all cursor-pointer ${
           isChatActive

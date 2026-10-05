@@ -283,27 +283,87 @@ export default function App() {
     });
   };
 
-  const handleSendMessage = async (text: string, overridePatientId?: string) => {
-    const pId = overridePatientId || activePatient.id;
+  const handleSendMessage = async (text: string, overrideTargetId?: string, extraFields?: Partial<ChatMessage>) => {
     const isDoctorSender = activePortal === 'doctor';
     
-    const senderRole = isDoctorSender ? 'doctor' : 'patient';
-    const senderName = isDoctorSender 
-      ? (currentStaff?.name || 'د. طارق الحكيم') 
-      : activePatient.name;
+    if (isDoctorSender) {
+      const patientId = overrideTargetId || activePatient.id;
+      const targetPat = patients.find(p => p.id === patientId) || activePatient;
+      const newMsg = await api.messages.send({
+        senderId: currentStaff?.doctorId || 'doc-moayad',
+        senderName: currentStaff?.name || 'أ. محمد المؤيد',
+        senderRole: 'doctor',
+        doctorId: currentStaff?.doctorId || 'doc-moayad',
+        doctorName: currentStaff?.name || 'أ. محمد المؤيد',
+        patientId: targetPat.id,
+        text,
+        isRead: true,
+        ...extraFields
+      });
+      setMessages(prev => [...prev, newMsg]);
+    } else {
+      // Patient sending to a doctor
+      const targetDoctorId = overrideTargetId || 'doc-moayad';
+      const targetDoc = doctors.find(d => d.id === targetDoctorId) || doctors[0];
+      
+      const newMsg = await api.messages.send({
+        senderId: activePatient.id,
+        senderName: activePatient.name,
+        senderRole: 'patient',
+        doctorId: targetDoc?.id || targetDoctorId,
+        doctorName: targetDoc?.name || 'المعالج النفسي',
+        patientId: activePatient.id,
+        text,
+        isRead: false,
+        ...extraFields
+      });
+      setMessages(prev => [...prev, newMsg]);
 
-    const newMsg = await api.messages.send({
-      senderId: isDoctorSender ? (currentStaff?.doctorId || 'doc-hakim') : pId,
-      senderName,
-      senderRole,
-      doctorId: currentStaff?.doctorId || 'doc-hakim',
-      doctorName: currentStaff?.name || 'د. طارق الحكيم',
-      patientId: pId,
-      text,
-      isRead: isDoctorSender
-    });
+      // Provide an automated supportive doctor acknowledgment after a short delay
+      setTimeout(async () => {
+        const isVoiceMsg = extraFields?.audioUrl || text.includes('تسجيل صوتي');
+        const docReplyText = isVoiceMsg 
+          ? `أهلاً بك يا ${activePatient.name.split(' ')[0]}، استمعت إلى رسالتك الصوتية بوضوح. سأقوم بإعداد التوجيهات الطبية والإكلينيكية المناسبة لك.`
+          : `أهلاً بك يا ${activePatient.name.split(' ')[0]}، استلمت رسالتك بخصوص "${text.slice(0, 30)}${text.length > 30 ? '...' : ''}". جاري مراجعة الملاحظة وسأوافيك بالرد الإكلينيكي اللازم.`;
+          
+        const replyMsg = await api.messages.send({
+          senderId: targetDoc?.id || targetDoctorId,
+          senderName: targetDoc?.name || 'المعالج النفسي',
+          senderRole: 'doctor',
+          doctorId: targetDoc?.id || targetDoctorId,
+          doctorName: targetDoc?.name || 'المعالج النفسي',
+          patientId: activePatient.id,
+          text: docReplyText,
+          isRead: false
+        });
+        setMessages(prev => [...prev, replyMsg]);
+      }, 1500);
+    }
+  };
 
-    setMessages(prev => [...prev, newMsg]);
+  const handleDeleteMessage = async (id: string) => {
+    const updated = await api.messages.delete(id);
+    setMessages(updated);
+  };
+
+  const handleTogglePinMessage = async (id: string) => {
+    const updated = await api.messages.togglePin(id);
+    setMessages(updated);
+  };
+
+  const handleToggleFavoriteMessage = async (id: string) => {
+    const updated = await api.messages.toggleFavorite(id);
+    setMessages(updated);
+  };
+
+  const handleReactToMessage = async (id: string, emoji: string) => {
+    const updated = await api.messages.react(id, emoji);
+    setMessages(updated);
+  };
+
+  const handleSaveToJournal = async (id: string) => {
+    const updated = await api.messages.saveToJournal(id);
+    setMessages(updated);
   };
 
   const handleToggleExercise = async (id: string) => {
@@ -576,6 +636,11 @@ export default function App() {
               onOpenSelfDiagnostic={() => setIsSelfDiagnosticModalOpen(true)}
               onTakeScaleClick={(scaleId) => handleOpenScaleRunner(scaleId)}
               onSendMessage={handleSendMessage}
+              onDeleteMessage={handleDeleteMessage}
+              onTogglePinMessage={handleTogglePinMessage}
+              onToggleFavoriteMessage={handleToggleFavoriteMessage}
+              onReactToMessage={handleReactToMessage}
+              onSaveToJournal={handleSaveToJournal}
               onToggleExercise={handleToggleExercise}
               onViewPrescription={(rx) => {
                 setSelectedPrescriptionForView(rx);
@@ -654,6 +719,11 @@ export default function App() {
                   onSelectPatient={handleSelectPatient}
                   messages={messages}
                   onSendMessage={handleSendMessage}
+                  onDeleteMessage={handleDeleteMessage}
+                  onTogglePinMessage={handleTogglePinMessage}
+                  onToggleFavoriteMessage={handleToggleFavoriteMessage}
+                  onReactToMessage={handleReactToMessage}
+                  onSaveToJournal={handleSaveToJournal}
                   currentStaff={currentStaff}
                   onOpenSendScaleModal={(p) => {
                     handleSelectPatient(p);

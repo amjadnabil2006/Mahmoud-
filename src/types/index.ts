@@ -394,6 +394,16 @@ export interface ChatMessage {
   doctorId?: string;
   doctorName?: string;
   patientId?: string;
+  audioUrl?: string;
+  audioDurationSeconds?: number;
+  attachmentType?: 'file' | 'image' | 'scale_result' | 'cbt_homework' | 'medication_query';
+  attachmentName?: string;
+  attachmentData?: any;
+  isPinned?: boolean;
+  isFavorite?: boolean;
+  savedToJournal?: boolean;
+  reactions?: Record<string, number>;
+  replyTo?: { id: string; text: string; senderName: string };
 }
 
 export interface TherapyExercise {

@@ -46,7 +46,16 @@ import {
   Star,
   Zap,
   Globe,
-  Users2
+  Users2,
+  Play,
+  Pause,
+  X,
+  MoreHorizontal,
+  Pin,
+  Quote,
+  Copy,
+  BookOpen,
+  CheckCheck
 } from 'lucide-react';
 import { 
   Patient, 
@@ -97,6 +106,9 @@ import { SelfHelpToolsModal } from '../components/SelfHelpToolsModal';
 import { DoctorRatingModal } from '../components/DoctorRatingModal';
 import { ChangeDoctorModal } from '../components/ChangeDoctorModal';
 import { GroupTherapyModal } from '../components/GroupTherapyModal';
+import { DoctorChatModal } from '../components/DoctorChatModal';
+import { MessageActionModal } from '../components/MessageActionModal';
+import { DoctorsVerticalChatList } from '../components/DoctorsVerticalChatList';
 
 export type PatientTabId = 'departments' | 'overview' | 'appointments' | 'records' | 'invoices' | 'scales' | 'exercises' | 'messages' | 'account';
 
@@ -120,7 +132,12 @@ interface Props {
   onBookDepartmentClick?: (deptId: string) => void;
   onOpenSelfDiagnostic: () => void;
   onTakeScaleClick: (scaleId: string) => void;
-  onSendMessage: (text: string, doctorId?: string) => void;
+  onSendMessage: (text: string, doctorId?: string, extra?: Partial<ChatMessage>) => void;
+  onDeleteMessage?: (id: string) => void;
+  onTogglePinMessage?: (id: string) => void;
+  onToggleFavoriteMessage?: (id: string) => void;
+  onReactToMessage?: (id: string, emoji: string) => void;
+  onSaveToJournal?: (id: string) => void;
   onToggleExercise: (id: string) => void;
   onViewPrescription: (rx: Prescription) => void;
   onCancelAppointment?: (aptId: string) => void;
@@ -149,6 +166,11 @@ export const PatientPortalView: React.FC<Props> = ({
   onOpenSelfDiagnostic,
   onTakeScaleClick,
   onSendMessage,
+  onDeleteMessage,
+  onTogglePinMessage,
+  onToggleFavoriteMessage,
+  onReactToMessage,
+  onSaveToJournal,
   onToggleExercise,
   onViewPrescription,
   onCancelAppointment,
@@ -183,12 +205,258 @@ export const PatientPortalView: React.FC<Props> = ({
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const [doctorToRate, setDoctorToRate] = useState<Doctor | null>(null);
   const [isChangeDoctorModalOpen, setIsChangeDoctorModalOpen] = useState(false);
+  const [isDoctorChatModalOpen, setIsDoctorChatModalOpen] = useState(false);
+  const [chatModalDoctor, setChatModalDoctor] = useState<Doctor | null>(null);
 
-  // Chat and Search
+  // In-tab Message Actions state
+  const [activeTabActionMessage, setActiveTabActionMessage] = useState<ChatMessage | null>(null);
+  const [tabQuotedMessage, setTabQuotedMessage] = useState<ChatMessage | null>(null);
+  const [portalToastMessage, setPortalToastMessage] = useState<string | null>(null);
+
+  // In-tab Chat and Search
   const [selectedDoctorId, setSelectedDoctorId] = useState<string>(doctors[0]?.id || 'doc-moayad');
   const [mobileChatView, setMobileChatView] = useState<'list' | 'chat'>('list');
   const [doctorSearchQuery, setDoctorSearchQuery] = useState<string>('');
   const [messageInput, setMessageInput] = useState<string>('');
+  const [isTabRecording, setIsTabRecording] = useState<boolean>(false);
+  const [tabRecordingSeconds, setTabRecordingSeconds] = useState<number>(0);
+  const [isTabAttachmentMenuOpen, setIsTabAttachmentMenuOpen] = useState<boolean>(false);
+  const [showTabQuickPrompts, setShowTabQuickPrompts] = useState<boolean>(true);
+  const [tabPlayingAudioId, setTabPlayingAudioId] = useState<string | null>(null);
+  const [tabPlaybackProgress, setTabPlaybackProgress] = useState<Record<string, number>>({});
+  const tabFileInputRef = React.useRef<HTMLInputElement>(null);
+  const tabRecordingTimerRef = React.useRef<any>(null);
+  const tabAudioPlaybackIntervalRef = React.useRef<any>(null);
+  const tabMediaRecorderRef = React.useRef<MediaRecorder | null>(null);
+  const tabAudioChunksRef = React.useRef<Blob[]>([]);
+  const tabMediaStreamRef = React.useRef<MediaStream | null>(null);
+  const tabAudioElementRef = React.useRef<HTMLAudioElement | null>(null);
+
+  // Suggested Prompts for In-Tab Chat with compact labels
+  const TAB_QUICK_PROMPTS = [
+    { cat: 'واجب', label: 'الواجب السلوكي 📝', icon: '📝', text: 'مرحباً دكتور، أود الاستفسار عن الواجب السلوكي للأسبوع الحالي.' },
+    { cat: 'تحسن', label: 'جودة النوم ✨', icon: '✨', text: 'أشعر بتحسن ملحوظ في جودة النوم وأود إعلامك بذلك.' },
+    { cat: 'توتر', label: 'نوبة التوتر 🧘', icon: '🧘', text: 'هل هناك توصيات إضافية للتعامل مع نوبات التوتر المفاجئة؟' },
+    { cat: 'مقياس', label: 'فحص مقياسي 📊', icon: '📊', text: 'أود مراجعة ومناقشة نتائج اختباري النفسي الأخير معك.' },
+    { cat: 'دواء', label: 'موعد الجرعة 💊', icon: '💊', text: 'هل يمكن تقديم موعد الجرعة لتفادي الشعور بالخمول؟' }
+  ];
+
+  useEffect(() => {
+    if (isTabRecording) {
+      setTabRecordingSeconds(0);
+      tabRecordingTimerRef.current = setInterval(() => {
+        setTabRecordingSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (tabRecordingTimerRef.current) clearInterval(tabRecordingTimerRef.current);
+    }
+    return () => {
+      if (tabRecordingTimerRef.current) clearInterval(tabRecordingTimerRef.current);
+      if (tabMediaStreamRef.current) {
+        tabMediaStreamRef.current.getTracks().forEach(t => t.stop());
+      }
+      if (tabAudioElementRef.current) {
+        tabAudioElementRef.current.pause();
+      }
+    };
+  }, [isTabRecording]);
+
+  const handleStartTabRecording = async () => {
+    setIsTabAttachmentMenuOpen(false);
+    tabAudioChunksRef.current = [];
+
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+        tabMediaStreamRef.current = stream;
+
+        let selectedMimeType = '';
+        if (typeof MediaRecorder !== 'undefined') {
+          const supportedTypes = [
+            'audio/webm;codecs=opus',
+            'audio/webm',
+            'audio/mp4',
+            'audio/aac',
+            'audio/ogg;codecs=opus',
+            'audio/ogg'
+          ];
+          for (const type of supportedTypes) {
+            if (MediaRecorder.isTypeSupported(type)) {
+              selectedMimeType = type;
+              break;
+            }
+          }
+        }
+
+        const options = selectedMimeType ? { mimeType: selectedMimeType } : undefined;
+        const recorder = options ? new MediaRecorder(stream, options) : new MediaRecorder(stream);
+        tabMediaRecorderRef.current = recorder;
+
+        recorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            tabAudioChunksRef.current.push(event.data);
+          }
+        };
+
+        recorder.start(200);
+        setIsTabRecording(true);
+      } else {
+        setIsTabRecording(true);
+      }
+    } catch (err) {
+      console.warn('Tab mic error:', err);
+      setIsTabRecording(true);
+    }
+  };
+
+  const handleCancelTabRecording = () => {
+    if (tabMediaRecorderRef.current && tabMediaRecorderRef.current.state !== 'inactive') {
+      try {
+        tabMediaRecorderRef.current.stop();
+      } catch (e) {}
+    }
+    if (tabMediaStreamRef.current) {
+      tabMediaStreamRef.current.getTracks().forEach(t => t.stop());
+      tabMediaStreamRef.current = null;
+    }
+    tabAudioChunksRef.current = [];
+    setIsTabRecording(false);
+    setTabRecordingSeconds(0);
+  };
+
+  const playTabSynthesizedAudio = (msgId: string, durationSeconds: number = 6, audioUrl?: string) => {
+    if (tabPlayingAudioId === msgId) {
+      if (tabAudioElementRef.current) {
+        tabAudioElementRef.current.pause();
+      }
+      setTabPlayingAudioId(null);
+      if (tabAudioPlaybackIntervalRef.current) clearInterval(tabAudioPlaybackIntervalRef.current);
+      return;
+    }
+
+    if (tabAudioElementRef.current) {
+      tabAudioElementRef.current.pause();
+    }
+    if (tabAudioPlaybackIntervalRef.current) clearInterval(tabAudioPlaybackIntervalRef.current);
+
+    setTabPlayingAudioId(msgId);
+    setTabPlaybackProgress(prev => ({ ...prev, [msgId]: 0 }));
+
+    if (audioUrl && audioUrl.startsWith('blob:')) {
+      const audio = new Audio(audioUrl);
+      tabAudioElementRef.current = audio;
+
+      audio.play().catch(e => console.warn(e));
+
+      audio.ontimeupdate = () => {
+        if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
+          const prog = Math.min(100, Math.round((audio.currentTime / audio.duration) * 100));
+          setTabPlaybackProgress(prev => ({ ...prev, [msgId]: prog }));
+        }
+      };
+
+      audio.onended = () => {
+        setTabPlayingAudioId(null);
+        setTabPlaybackProgress(prev => ({ ...prev, [msgId]: 100 }));
+      };
+      audio.onerror = () => {
+        setTabPlayingAudioId(null);
+      };
+    } else {
+      try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) {
+          const ctx = new AudioCtx();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(320, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(480, ctx.currentTime + 0.3);
+          gain.gain.setValueAtTime(0.06, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 1.2);
+        }
+      } catch (e) {}
+
+      const stepMs = 200;
+      const totalMs = durationSeconds * 1000;
+      let elapsedMs = 0;
+
+      tabAudioPlaybackIntervalRef.current = setInterval(() => {
+        elapsedMs += stepMs;
+        const progress = Math.min(100, Math.round((elapsedMs / totalMs) * 100));
+        setTabPlaybackProgress(prev => ({ ...prev, [msgId]: progress }));
+
+        if (elapsedMs >= totalMs) {
+          clearInterval(tabAudioPlaybackIntervalRef.current);
+          setTabPlayingAudioId(null);
+          setTabPlaybackProgress(prev => ({ ...prev, [msgId]: 100 }));
+        }
+      }, stepMs);
+    }
+  };
+
+  const handleSendTabVoiceNote = () => {
+    const finalDuration = Math.max(1, tabRecordingSeconds);
+    const durationFormatted = `${Math.floor(finalDuration / 60)}:${(finalDuration % 60).toString().padStart(2, '0')}`;
+    const recorder = tabMediaRecorderRef.current;
+
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.onstop = () => {
+        let audioBlobUrl = '';
+        if (tabAudioChunksRef.current.length > 0) {
+          const mimeType = recorder.mimeType || 'audio/webm';
+          const audioBlob = new Blob(tabAudioChunksRef.current, { type: mimeType });
+          audioBlobUrl = URL.createObjectURL(audioBlob);
+        }
+
+        if (tabMediaStreamRef.current) {
+          tabMediaStreamRef.current.getTracks().forEach(t => t.stop());
+          tabMediaStreamRef.current = null;
+        }
+
+        onSendMessage(`🎙️ تسجيل صوتي (${durationFormatted})`, selectedDoctorId, {
+          audioUrl: audioBlobUrl || 'voice-note',
+          audioDurationSeconds: finalDuration
+        });
+      };
+
+      try {
+        recorder.requestData();
+        recorder.stop();
+      } catch (e) {
+        if (tabMediaStreamRef.current) {
+          tabMediaStreamRef.current.getTracks().forEach(t => t.stop());
+          tabMediaStreamRef.current = null;
+        }
+        onSendMessage(`🎙️ تسجيل صوتي (${durationFormatted})`, selectedDoctorId, {
+          audioUrl: 'voice-note',
+          audioDurationSeconds: finalDuration
+        });
+      }
+    } else {
+      if (tabMediaStreamRef.current) {
+        tabMediaStreamRef.current.getTracks().forEach(t => t.stop());
+        tabMediaStreamRef.current = null;
+      }
+      onSendMessage(`🎙️ تسجيل صوتي (${durationFormatted})`, selectedDoctorId, {
+        audioUrl: 'voice-note',
+        audioDurationSeconds: finalDuration
+      });
+    }
+
+    setIsTabRecording(false);
+    setTabRecordingSeconds(0);
+  };
 
   // Daily tracker
   const [todayMood, setTodayMood] = useState<'happy' | 'neutral' | 'sad' | null>('neutral');
@@ -210,8 +478,29 @@ export const PatientPortalView: React.FC<Props> = ({
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageInput.trim()) return;
-    onSendMessage(messageInput, selectedDoctorId);
+    onSendMessage(messageInput, selectedDoctorId, {
+      replyTo: tabQuotedMessage ? { id: tabQuotedMessage.id, text: tabQuotedMessage.text, senderName: tabQuotedMessage.senderName } : undefined
+    });
     setMessageInput('');
+    setTabQuotedMessage(null);
+  };
+
+  const handleStartFreshChatWithDoctor = () => {
+    if (window.confirm(`هل تود بدء محادثة جديدة وتصفير الرسائل السابقة مع ${selectedDoctor.name}؟`)) {
+      const toDelete = messages.filter(m => 
+        (m.doctorId === selectedDoctor.id || m.senderId === selectedDoctor.id) &&
+        (m.patientId === patient.id || m.senderId === patient.id || m.senderRole === 'patient')
+      );
+      if (onDeleteMessage) {
+        toDelete.forEach(m => onDeleteMessage(m.id));
+      }
+      showPortalToast(`تم بدء محادثة جديدة ونظيفة مع ${selectedDoctor.name}`);
+    }
+  };
+
+  const showPortalToast = (text: string) => {
+    setPortalToastMessage(text);
+    setTimeout(() => setPortalToastMessage(null), 2500);
   };
 
   const handleToggleMed = (key: string) => {
@@ -737,6 +1026,20 @@ export const PatientPortalView: React.FC<Props> = ({
                   <button
                     onClick={() => {
                       const doc = doctors.find(d => d.id === apt.doctorId) || doctors[0];
+                      setSelectedDoctorId(doc.id);
+                      setChatModalDoctor(doc);
+                      setIsDoctorChatModalOpen(true);
+                    }}
+                    className="px-3.5 py-2 bg-teal-50 hover:bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 text-xs font-bold rounded-xl border border-teal-200 dark:border-teal-800 transition flex items-center gap-1 cursor-pointer"
+                    title="محادثة مباشرة مع الطبيب"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>مراسلة</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const doc = doctors.find(d => d.id === apt.doctorId) || doctors[0];
                       setDoctorToRate(doc);
                       setIsRatingModalOpen(true);
                     }}
@@ -835,93 +1138,19 @@ export const PatientPortalView: React.FC<Props> = ({
       )}
 
       {/* ======================================================== */}
-      {/* TAB 7: MESSAGES & CHAT (with Safety Warning OBS-C-023)    */}
+      {/* TAB 7: MESSAGES & CHAT (Vertical Doctors List + Site Info) */}
       {/* ======================================================== */}
-      {currentTab === 'messages' && (
-        <div className="space-y-4">
-          {/* Emergency Safety Alert (OBS-C-023) */}
-          <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl flex items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-bold">
-              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>تنبيه أمان: هذه المحادثة ليست مخصصة للحالات الطارئة أو الإسعافية الحرجة.</span>
-            </div>
-            <button
-              onClick={() => setLegalModalType('emergency')}
-              className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold rounded-lg shrink-0"
-            >
-              خط الطوارئ 24/7
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[600px] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-            {/* Doctors list */}
-            <div className="p-4 border-l border-slate-100 dark:border-slate-800 space-y-2 overflow-y-auto">
-              <h4 className="font-bold text-xs text-slate-400 mb-2">المختصون المتاحون للمراسلة:</h4>
-              {doctors.map(doc => (
-                <button
-                  key={doc.id}
-                  onClick={() => setSelectedDoctorId(doc.id)}
-                  className={`w-full p-3 rounded-2xl text-right transition flex items-center gap-3 ${
-                    selectedDoctorId === doc.id
-                      ? 'bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800'
-                      : 'hover:bg-slate-50 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <img src={doc.avatar} alt={doc.name} className="w-10 h-10 rounded-xl object-cover" />
-                  <div className="flex-1 min-w-0 text-xs">
-                    <p className="font-bold text-slate-900 dark:text-slate-100 truncate">{doc.name}</p>
-                    <p className="text-[11px] text-slate-400 truncate">{doc.title}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {/* Chat Box */}
-            <div className="lg:col-span-2 flex flex-col justify-between p-4">
-              <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <img src={selectedDoctor.avatar} alt={selectedDoctor.name} className="w-9 h-9 rounded-xl object-cover" />
-                  <div>
-                    <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100">{selectedDoctor.name}</h4>
-                    <p className="text-[10px] text-emerald-600 font-bold">● متاح للمراسلة ضمن باقتك</p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setIsChangeDoctorModalOpen(true)}
-                  className="text-xs text-teal-600 hover:underline font-bold"
-                >
-                  تغيير المعالج
-                </button>
-              </div>
-
-              {/* Messages Body */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl text-xs text-slate-600 dark:text-slate-300 max-w-sm">
-                  مرحباً بك! هذه المساحة الآمنة مخصصة للاستفسارات ومتابعة الواجبات بين الجلسات.
-                </div>
-              </div>
-
-              {/* Input */}
-              <form onSubmit={handleSendMessage} className="pt-3 border-t border-slate-100 dark:border-slate-800 flex gap-2">
-                <input
-                  type="text"
-                  value={messageInput}
-                  onChange={e => setMessageInput(e.target.value)}
-                  placeholder="اكتب رسالتك لمعالجك هنا..."
-                  className="flex-1 p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
-                />
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>إرسال</span>
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
+      {currentTab === "messages" && (
+        <DoctorsVerticalChatList
+          doctors={doctors}
+          messages={messages}
+          patient={patient}
+          onOpenDoctorChat={(doc) => {
+            setChatModalDoctor(doc);
+            setIsDoctorChatModalOpen(true);
+          }}
+          onOpenEmergencyModal={() => setLegalModalType("emergency")}
+        />
       )}
 
       {/* ======================================================== */}
@@ -1069,6 +1298,60 @@ export const PatientPortalView: React.FC<Props> = ({
         onJoinSuccess={(title, alias) => {
           alert(`تم تأكيد انضمامك لبرنامج العلاج الجماعي "${title}" باسمك المستعار "${alias}" بنجاح.`);
         }}
+      />
+
+      {/* Portal Toast Notification */}
+      {portalToastMessage && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-60 bg-slate-900/90 text-white text-xs font-bold px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 animate-bounce border border-slate-700">
+          <span>{portalToastMessage}</span>
+        </div>
+      )}
+
+      {/* Advanced Message Action Modal in In-Tab Chat */}
+      <MessageActionModal
+        isOpen={!!activeTabActionMessage}
+        onClose={() => setActiveTabActionMessage(null)}
+        message={activeTabActionMessage}
+        onDelete={(id) => {
+          if (onDeleteMessage) onDeleteMessage(id);
+          showPortalToast('تم حذف الرسالة بنجاح');
+        }}
+        onTogglePin={(id) => {
+          if (onTogglePinMessage) onTogglePinMessage(id);
+          showPortalToast('تم تحديث تثبيت الرسالة');
+        }}
+        onToggleFavorite={(id) => {
+          if (onToggleFavoriteMessage) onToggleFavoriteMessage(id);
+          showPortalToast('تم تحديث المفضلة السريرية');
+        }}
+        onReact={(id, emoji) => {
+          if (onReactToMessage) onReactToMessage(id, emoji);
+          showPortalToast(`تم التفاعل: ${emoji}`);
+        }}
+        onSaveToJournal={(id) => {
+          if (onSaveToJournal) onSaveToJournal(id);
+          showPortalToast('تم الحفظ في مفكرة وسجل العلاج CBT!');
+        }}
+        onQuoteReply={(msg) => {
+          setTabQuotedMessage(msg);
+          showPortalToast('تم تحديد الرسالة للاقتباس والرد');
+        }}
+      />
+
+      <DoctorChatModal
+        isOpen={isDoctorChatModalOpen}
+        onClose={() => setIsDoctorChatModalOpen(false)}
+        doctor={chatModalDoctor || selectedDoctor}
+        patient={patient}
+        messages={messages}
+        onSendMessage={onSendMessage}
+        onDeleteMessage={onDeleteMessage}
+        onTogglePinMessage={onTogglePinMessage}
+        onToggleFavoriteMessage={onToggleFavoriteMessage}
+        onReactToMessage={onReactToMessage}
+        onSaveToJournal={onSaveToJournal}
+        onBookAppointment={(docId) => onBookAppointmentClick(docId)}
+        onOpenEmergencyModal={() => setLegalModalType('emergency')}
       />
 
       {/* Footer */}

@@ -49,7 +49,7 @@ export const INITIAL_SETTINGS: ClinicSettings = {
   announcementType: 'info',
 
   // Crisis & Emergency Banner
-  showEmergencyBanner: true,
+  showEmergencyBanner: false,
   emergencyBannerTitle: 'خط الدعم والمساعدة النفسية والاستشارات الفورية 24/7',
   emergencyBannerSubtitle: 'فريق طوارئ وتدخل نفسي سريع متاح على مدار الساعة للحالات الحرجة ونوبات الهلع',
   emergencyHotline: '920000000',
@@ -169,16 +169,16 @@ export const INITIAL_EXERCISES: TherapyExercise[] = [
 ];
 
 export const INITIAL_MESSAGES: ChatMessage[] = [
-  // Conversation with Dr. Tariq Al-Hakim (Psychiatry)
+  // Conversation with Mr. Mohammed Al-Moayad (CBT)
   {
     id: 'msg-1',
-    senderId: 'doc-1',
-    senderName: 'د. طارق الحكيم',
+    senderId: 'doc-moayad',
+    senderName: 'أ. محمد المؤيد',
     senderRole: 'doctor',
-    doctorId: 'doc-1',
-    doctorName: 'د. طارق الحكيم',
+    doctorId: 'doc-moayad',
+    doctorName: 'أ. محمد المؤيد',
     patientId: 'pat-101',
-    text: 'أهلاً بك يا سارة، كيف تسير الأمور مع جرعة دواء سيبرالكس في الأيام الثلاثة الأخيرة؟',
+    text: 'أهلاً بك يا سارة، كيف تسير الأمور مع الواجب السلوكي وتدوين الأفكار التلقائية في الأيام الأخيرة؟',
     timestamp: '2026-09-29T10:15:00Z',
     isRead: true
   },
@@ -187,125 +187,23 @@ export const INITIAL_MESSAGES: ChatMessage[] = [
     senderId: 'pat-101',
     senderName: 'سارة خالد المنصور',
     senderRole: 'patient',
-    doctorId: 'doc-1',
-    doctorName: 'د. طارق الحكيم',
+    doctorId: 'doc-moayad',
+    doctorName: 'أ. محمد المؤيد',
     patientId: 'pat-101',
-    text: 'أهلاً دكتور، الغثيان الخفيف اختفى تماماً وبدأت أشعر بتحسن بسيط في ساعات الصباح، وأتممت تمرين التنفس اليومي.',
+    text: 'أهلاً أستاذ محمد، دونت ثلاثة مواقف شعرت فيها بالقلق الاجتماعي وحاولت كتابة أفكار بديلة منطقية.',
     timestamp: '2026-09-29T10:22:00Z',
     isRead: true
   },
   {
     id: 'msg-3',
-    senderId: 'doc-1',
-    senderName: 'د. طارق الحكيم',
+    senderId: 'doc-moayad',
+    senderName: 'أ. محمد المؤيد',
     senderRole: 'doctor',
-    doctorId: 'doc-1',
-    doctorName: 'د. طارق الحكيم',
+    doctorId: 'doc-moayad',
+    doctorName: 'أ. محمد المؤيد',
     patientId: 'pat-101',
-    text: 'ممتاز جداً ومبشر، استمري على نفس الجرعة وسنراجع مقياس PHQ-9 في جلستنا القادمة يوم الأربعاء عبر Google Meet.',
+    text: 'ممتاز جداً ومبشر! استمري على نفس التمارين وسنراجع مقياس PHQ-9 في جلستنا القادمة.',
     timestamp: '2026-09-29T10:30:00Z',
-    isRead: true
-  },
-
-  // Conversation with Ms. Maha Al-Ghamdi (Psychotherapy CBT)
-  {
-    id: 'msg-4',
-    senderId: 'doc-2',
-    senderName: 'أ. مها الغامدي',
-    senderRole: 'doctor',
-    doctorId: 'doc-2',
-    doctorName: 'أ. مها الغامدي',
-    patientId: 'pat-101',
-    text: 'مرحباً سارة، هل تمكنتِ من تدوين الأفكار التلقائية السلبية في مفكرة CBT لهذا الأسبوع؟',
-    timestamp: '2026-09-29T14:10:00Z',
-    isRead: true
-  },
-  {
-    id: 'msg-5',
-    senderId: 'pat-101',
-    senderName: 'سارة خالد المنصور',
-    senderRole: 'patient',
-    doctorId: 'doc-2',
-    doctorName: 'أ. مها الغامدي',
-    patientId: 'pat-101',
-    text: 'نعم أستاذة مها، دونت ثلاثة مواقف شعرت فيها بالقلق الاجتماعي وحاولت كتابة أفكار بديلة منطقية.',
-    timestamp: '2026-09-29T14:45:00Z',
-    isRead: true
-  },
-  {
-    id: 'msg-6',
-    senderId: 'doc-2',
-    senderName: 'أ. مها الغامدي',
-    senderRole: 'doctor',
-    doctorId: 'doc-2',
-    doctorName: 'أ. مها الغامدي',
-    patientId: 'pat-101',
-    text: 'رائع جداً! هذا تقدم ملموس في تفكيك التفكير الكارثي، سنناقشها سوياً في جلستنا الافتراضية القادمة.',
-    timestamp: '2026-09-29T15:00:00Z',
-    isRead: true
-  },
-
-  // Conversation with Ms. Reem Al-Zahrani (Nutritional Psychiatry)
-  {
-    id: 'msg-7',
-    senderId: 'doc-3',
-    senderName: 'أ. ريم الزهراني',
-    senderRole: 'doctor',
-    doctorId: 'doc-3',
-    doctorName: 'أ. ريم الزهراني',
-    patientId: 'pat-101',
-    text: 'السلام عليكم سارة، راجعت جدولك الغذائي الداعم لمحور الأمعاء-الدماغ، كيف كانت استجابة جهازك الهضمي للألياف المخمرة والبروبيوتيك؟',
-    timestamp: '2026-09-28T11:20:00Z',
-    isRead: true
-  },
-  {
-    id: 'msg-8',
-    senderId: 'pat-101',
-    senderName: 'سارة خالد المنصور',
-    senderRole: 'patient',
-    doctorId: 'doc-3',
-    doctorName: 'أ. ريم الزهراني',
-    patientId: 'pat-101',
-    text: 'وعليكم السلام، الانتفاخ قلّ كثيراً وطاقتي في فترة بعد الظهر أصبحت أفضل مع تقليل السكريات المكررة.',
-    timestamp: '2026-09-28T12:05:00Z',
-    isRead: true
-  },
-  {
-    id: 'msg-9',
-    senderId: 'doc-3',
-    senderName: 'أ. ريم الزهراني',
-    senderRole: 'doctor',
-    doctorId: 'doc-3',
-    doctorName: 'أ. ريم الزهراني',
-    patientId: 'pat-101',
-    text: 'أخبار سارة جداً! سنضيف مصادر غنية بالمغنيسيوم وأوميغا-3 لدعم تصنيع السيروتونين الطبيعي.',
-    timestamp: '2026-09-28T12:30:00Z',
-    isRead: true
-  },
-
-  // Conversation with Mr. Abdulaziz Al-Tamimi (Psychiatric Social Work)
-  {
-    id: 'msg-10',
-    senderId: 'doc-4',
-    senderName: 'أ. عبدالعزيز التميمي',
-    senderRole: 'doctor',
-    doctorId: 'doc-4',
-    doctorName: 'أ. عبدالعزيز التميمي',
-    patientId: 'pat-101',
-    text: 'أهلاً سارة، كيف تسير خطة إعادة ترتيب بيئة العمل والتواصل الصحي مع الأسرة؟ فريقنا الاجتماعي متواجد دائماً لمساندتك.',
-    timestamp: '2026-09-27T16:00:00Z',
-    isRead: true
-  },
-  {
-    id: 'msg-11',
-    senderId: 'pat-101',
-    senderName: 'سارة خالد المنصور',
-    senderRole: 'patient',
-    doctorId: 'doc-4',
-    doctorName: 'أ. عبدالعزيز التميمي',
-    patientId: 'pat-101',
-    text: 'شكراً أستاذ عبدالعزيز، تحدثت مع أسرتي حول حاجتي لأوقات راحة وبدأوا يتفهمون الخطة العلاجية بشكل ممتاز.',
-    timestamp: '2026-09-27T16:30:00Z',
     isRead: true
   }
 ];
@@ -661,6 +559,41 @@ export const api = {
       all.push(newMsg);
       setStorage('messages', all);
       return newMsg;
+    },
+    delete: async (id: string): Promise<ChatMessage[]> => {
+      const all = getStorage('messages', INITIAL_MESSAGES);
+      const filtered = all.filter(m => m.id !== id);
+      setStorage('messages', filtered);
+      return filtered;
+    },
+    togglePin: async (id: string): Promise<ChatMessage[]> => {
+      const all = getStorage('messages', INITIAL_MESSAGES);
+      const updated = all.map(m => m.id === id ? { ...m, isPinned: !m.isPinned } : m);
+      setStorage('messages', updated);
+      return updated;
+    },
+    toggleFavorite: async (id: string): Promise<ChatMessage[]> => {
+      const all = getStorage('messages', INITIAL_MESSAGES);
+      const updated = all.map(m => m.id === id ? { ...m, isFavorite: !m.isFavorite } : m);
+      setStorage('messages', updated);
+      return updated;
+    },
+    react: async (id: string, emoji: string): Promise<ChatMessage[]> => {
+      const all = getStorage('messages', INITIAL_MESSAGES);
+      const updated = all.map(m => {
+        if (m.id !== id) return m;
+        const currentReactions = { ...(m.reactions || {}) };
+        currentReactions[emoji] = (currentReactions[emoji] || 0) + 1;
+        return { ...m, reactions: currentReactions };
+      });
+      setStorage('messages', updated);
+      return updated;
+    },
+    saveToJournal: async (id: string): Promise<ChatMessage[]> => {
+      const all = getStorage('messages', INITIAL_MESSAGES);
+      const updated = all.map(m => m.id === id ? { ...m, savedToJournal: true } : m);
+      setStorage('messages', updated);
+      return updated;
     }
   },
 
