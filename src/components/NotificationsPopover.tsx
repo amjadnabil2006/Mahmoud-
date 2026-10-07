@@ -8,6 +8,7 @@ import {
   Activity, 
   CheckCheck, 
   Video, 
+  Trash2,
   ExternalLink,
   ChevronLeft
 } from 'lucide-react';
@@ -18,6 +19,7 @@ interface NotificationsPopoverProps {
   onClose: () => void;
   notifications: AppNotification[];
   onMarkAllAsRead: () => void;
+  onClearAll?: () => void;
   onOpenChat: () => void;
   onOpenAppointments: () => void;
 }
@@ -27,6 +29,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
   onClose,
   notifications,
   onMarkAllAsRead,
+  onClearAll,
   onOpenChat,
   onOpenAppointments
 }) => {
@@ -80,6 +83,17 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {notifications.length > 0 && onClearAll && (
+              <button
+                onClick={onClearAll}
+                className="text-[11px] font-bold text-rose-300 hover:text-rose-200 flex items-center gap-1 cursor-pointer bg-white/10 px-2 py-1 rounded-lg transition-colors"
+                title="حذف جميع الإشعارات"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>حذف الكل</span>
+              </button>
+            )}
+
             {unreadCount > 0 && (
               <button
                 onClick={onMarkAllAsRead}
@@ -103,9 +117,16 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({
         {/* Notifications List */}
         <div className="max-h-96 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
           {notifications.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 space-y-2">
-              <Bell className="w-8 h-8 mx-auto stroke-1 opacity-50" />
-              <p className="text-xs">لا توجد إشعارات حالياً</p>
+            <div className="p-8 text-center text-slate-400 space-y-2.5">
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+                <Bell className="w-6 h-6 stroke-[1.5]" />
+              </div>
+              <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                لا توجد إشعارات حالياً
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
+                تم تفريغ وحذف جميع الإشعارات بنجاح. ستظهر هنا أي تنبيهات أو مواعيد جديدة فور ورودها.
+              </p>
             </div>
           ) : (
             notifications.map((item, idx) => (

@@ -28,6 +28,7 @@ interface HeaderProps {
   patients: Patient[];
   notifications?: AppNotification[];
   onMarkAllNotificationsRead?: () => void;
+  onClearAllNotifications?: () => void;
   onOpenChat?: () => void;
   onOpenAppointments?: () => void;
   onSelectPatient: (patient: Patient) => void;
@@ -47,6 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
   patients,
   notifications = [],
   onMarkAllNotificationsRead,
+  onClearAllNotifications,
   onOpenChat,
   onOpenAppointments,
   onSelectPatient,
@@ -158,6 +160,9 @@ export const Header: React.FC<HeaderProps> = ({
                 notifications={notifications}
                 onMarkAllAsRead={() => {
                   if (onMarkAllNotificationsRead) onMarkAllNotificationsRead();
+                }}
+                onClearAll={() => {
+                  if (onClearAllNotifications) onClearAllNotifications();
                 }}
                 onOpenChat={() => {
                   if (onOpenChat) onOpenChat();

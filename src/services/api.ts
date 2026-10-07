@@ -261,41 +261,7 @@ export const INITIAL_ANALYTICS: ClinicAnalytics = {
   monthlyRevenueSAR: 284500
 };
 
-export const INITIAL_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: 'notif-1',
-    title: 'موعد استشارة مؤكد عبر Google Meet',
-    description: 'تم تأكيد موعد جلستك مع د. طارق الحكيم يوم الأربعاء 05:00 مساءً بنجاح.',
-    timestamp: '2026-09-30 15:20',
-    type: 'appointment',
-    isRead: false,
-    meetUrl: 'https://meet.google.com/cm-med-2026'
-  },
-  {
-    id: 'notif-2',
-    title: 'إيصال سداد إلكتروني (PayPal)',
-    description: 'تم سداد رسوم الاستشارة الطبية بمبلغ 350 ر.س بنجاح.',
-    timestamp: '2026-09-30 15:18',
-    type: 'payment',
-    isRead: false
-  },
-  {
-    id: 'notif-3',
-    title: 'رسالة إكلينيكية جديدة من الطبيب',
-    description: 'د. طارق الحكيم: مرحباً بك سارة، أرجو تجهيز نتائج الفحص قبل الجلسة.',
-    timestamp: '2026-09-30 14:45',
-    type: 'chat',
-    isRead: false
-  },
-  {
-    id: 'notif-4',
-    title: 'تذكير بالفحص التشخيصي الذاتي',
-    description: 'يمكنك إتمام مقياس PHQ-9 لمقارنة مؤشرات التحسن قبل الجلسة.',
-    timestamp: '2026-09-30 12:00',
-    type: 'scale',
-    isRead: true
-  }
-];
+export const INITIAL_NOTIFICATIONS: AppNotification[] = [];
 
 // Storage helper functions
 const getStorage = <T>(key: string, fallback: T): T => {
@@ -694,6 +660,9 @@ export const api = {
       const updated = all.map(n => ({ ...n, isRead: true }));
       setStorage('notifications', updated);
       return updated;
+    },
+    clearAll: async (): Promise<void> => {
+      setStorage('notifications', []);
     }
   }
 };

@@ -31,6 +31,7 @@ import { DoctorScheduleTab } from './components/DoctorScheduleTab';
 import { DoctorFinancialsTab } from './components/DoctorFinancialsTab';
 import { DoctorPeerConsultationsTab } from './components/DoctorPeerConsultationsTab';
 import { DoctorReportsTab } from './components/DoctorReportsTab';
+import { DoctorAppPortalView } from './views/DoctorAppPortalView';
 
 import { 
   Patient, 
@@ -66,7 +67,7 @@ import { INITIAL_PATIENTS, INITIAL_ASSESSMENT_RESULTS, INITIAL_PRESCRIPTIONS } f
 import { Department, CLINICAL_DEPARTMENTS } from './data/departments';
 import { DepartmentManagementModal } from './components/DepartmentManagementModal';
 import { staffAuthService } from './services/staffAuth';
-import { Megaphone, UserCheck, Zap, Award, Stethoscope, Lock } from 'lucide-react';
+import { Megaphone, UserCheck, Zap, Award, Stethoscope, Lock, Sparkles } from 'lucide-react';
 
 export default function App() {
   // Theme state: dark / light
@@ -75,7 +76,7 @@ export default function App() {
   });
 
   // Active Portal: 'patient' | 'doctor' | 'admin'
-  const [activePortal, setActivePortal] = useState<PortalType>('patient');
+  const [activePortal, setActivePortal] = useState<PortalType>('doctor');
 
   // Staff User authentication state
   const [currentStaff, setCurrentStaff] = useState<StaffUser | null>(() => {
@@ -86,6 +87,7 @@ export default function App() {
 
   // Doctor tab state
   const [currentTab, setCurrentTab] = useState<TabId>('dashboard');
+  const [doctorViewMode, setDoctorViewMode] = useState<'app' | 'workstation'>('app');
   const currentRole: UserRole = currentStaff?.role || 'psychiatrist';
 
   // Data Collections
@@ -204,6 +206,11 @@ export default function App() {
   const handleMarkAllNotificationsRead = async () => {
     await api.notifications.markAllAsRead();
     setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  };
+
+  const handleClearAllNotifications = async () => {
+    await api.notifications.clearAll();
+    setNotifications([]);
   };
 
   const handleSaveScaleResult = async (result: ScaleAssessmentResult) => {
@@ -469,139 +476,65 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans text-slate-800 dark:text-slate-100 selection:bg-teal-500 selection:text-white transition-colors pb-16 md:pb-0 overflow-x-hidden w-full max-w-full" dir="rtl">
       
-      {/* Top Application Header */}
-      <Header
-        currentRole={currentRole}
-        setCurrentRole={() => setIsStaffAuthModalOpen(true)}
-        activePortal={activePortal}
-        setActivePortal={setActivePortal}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        activePatient={activePatient}
-        patients={patients}
-        notifications={notifications}
-        onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
-        onOpenChat={() => {
-          if (activePortal === 'doctor') {
-            setCurrentTab('chats');
-          } else {
-            setActivePortal('patient');
-            setPatientTab('messages');
-          }
-        }}
-        onOpenAppointments={() => {
-          if (activePortal === 'doctor') {
-            setCurrentTab('appointments');
-          } else {
-            setActivePortal('patient');
-            setPatientTab('appointments');
-          }
-        }}
-        onSelectPatient={handleSelectPatient}
-        onOpenOverview={() => setIsOverviewModalOpen(true)}
-        onOpenQuickScale={() => handleOpenScaleRunner('phq-9')}
-        onOpenNewPrescription={() => setIsPrescriptionModalOpen(true)}
-      />
+      {/* Top Application Header (Hidden in doctor portal to be truly full screen) */}
+      {activePortal !== 'doctor' && (
+        <>
+          <Header
+            currentRole={currentRole}
+            setCurrentRole={() => setIsStaffAuthModalOpen(true)}
+            activePortal={activePortal}
+            setActivePortal={setActivePortal}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            activePatient={activePatient}
+            patients={patients}
+            notifications={notifications}
+            onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
+            onClearAllNotifications={handleClearAllNotifications}
+            onOpenChat={() => {
+              setActivePortal('patient');
+              setPatientTab('messages');
+            }}
+            onOpenAppointments={() => {
+              setActivePortal('patient');
+              setPatientTab('appointments');
+            }}
+            onSelectPatient={handleSelectPatient}
+            onOpenOverview={() => setIsOverviewModalOpen(true)}
+            onOpenQuickScale={() => handleOpenScaleRunner('phq-9')}
+            onOpenNewPrescription={() => setIsPrescriptionModalOpen(true)}
+          />
 
-      {/* Dynamic Announcement Banner */}
-      {clinicSettings.showAnnouncementBanner && clinicSettings.announcementText && (
-        <div className={`w-full py-2 px-4 text-xs font-bold text-center border-b transition-colors flex items-center justify-center gap-2 ${
-          clinicSettings.announcementType === 'warning'
-            ? 'bg-amber-500 text-slate-950 border-amber-600'
-            : clinicSettings.announcementType === 'success'
-            ? 'bg-emerald-600 text-white border-emerald-700'
-            : 'bg-teal-700 text-white border-teal-800'
-        }`}>
-          <Megaphone className="w-3.5 h-3.5 shrink-0" />
-          <span>{clinicSettings.announcementText}</span>
-        </div>
-      )}
-
-      {/* Portal Switcher Banner */}
-      <PortalSwitcherBanner
-        activePortal={activePortal}
-        setActivePortal={setActivePortal}
-      />
-
-      {/* Doctor Workspace Top Staff Strip (OBS-D-002, ADD-D-007) */}
-      {activePortal === 'doctor' && (
-        <div className="bg-slate-900 text-white border-b border-teal-900/40 px-4 py-2.5">
-          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-            
-            <div className="flex items-center gap-3">
-              <img
-                src={currentStaff?.avatar || 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&auto=format&fit=crop&q=80'}
-                alt={currentStaff?.name || 'طبيب'}
-                className="w-8 h-8 rounded-xl object-cover border border-teal-500/40 shrink-0"
-              />
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <strong className="font-bold text-white text-xs truncate">
-                    {currentStaff?.name || 'د. طارق الحكيم'}
-                  </strong>
-                  <span className="px-2 py-0.5 rounded-full bg-teal-900 text-teal-300 font-mono font-bold text-[10px] border border-teal-700">
-                    {currentStaff?.licenseNumber || 'MD-PSY-98442'}
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-400 truncate">
-                  {currentStaff?.specialty || 'استشاري أول الطب النفسي'} · جلسة مشفرة ومحمية
-                </div>
-              </div>
+          {/* Dynamic Announcement Banner */}
+          {clinicSettings.showAnnouncementBanner && clinicSettings.announcementText && (
+            <div className={`w-full py-2 px-4 text-xs font-bold text-center border-b transition-colors flex items-center justify-center gap-2 ${
+              clinicSettings.announcementType === 'warning'
+                ? 'bg-amber-500 text-slate-950 border-amber-600'
+                : clinicSettings.announcementType === 'success'
+                ? 'bg-emerald-600 text-white border-emerald-700'
+                : 'bg-teal-700 text-white border-teal-800'
+            }`}>
+              <Megaphone className="w-3.5 h-3.5 shrink-0" />
+              <span>{clinicSettings.announcementText}</span>
             </div>
+          )}
 
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  const newStatus = staffAuthService.toggleOnDuty(currentStaff?.doctorId || 'doc-hakim');
-                  alert(newStatus ? 'تم تفعيل وضع المناوبة الفورية لاستقبال الحالات العاجلة ✓' : 'تم إيقاف المناوبة الفورية.');
-                }}
-                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
-                title="تفعيل وضع الاستشارات الفورية العاجلة"
-              >
-                <Zap className="w-3.5 h-3.5" />
-                <span>مناوب الآن</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsStaffAuthModalOpen(true)}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 border border-slate-700 cursor-pointer"
-              >
-                <UserCheck className="w-3.5 h-3.5 text-teal-400" />
-                <span>تبديل حساب المختص</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsJoinTeamModalOpen(true)}
-                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
-              >
-                <Award className="w-3.5 h-3.5" />
-                <span>انضم لفريقنا</span>
-              </button>
-            </div>
-
-          </div>
-        </div>
+          {/* Portal Switcher Banner */}
+          <PortalSwitcherBanner
+            activePortal={activePortal}
+            setActivePortal={setActivePortal}
+          />
+        </>
       )}
 
       {/* Main Container Area */}
-      <div className="flex-1 flex flex-col md:flex-row max-w-7xl w-full mx-auto overflow-hidden">
-        
-        {/* If Active Portal is DOCTOR: Show Workspace Sidebar */}
-        {activePortal === 'doctor' && (
-          <Sidebar
-            currentTab={currentTab}
-            setCurrentTab={setCurrentTab}
-            currentRole={currentRole}
-            currentStaff={currentStaff}
-            pendingRiskCount={pendingRiskCount}
-          />
-        )}
-
+      <div className={`flex-1 flex flex-col md:flex-row w-full overflow-hidden ${
+        activePortal === 'doctor' ? '' : 'max-w-7xl mx-auto'
+      }`}>
         {/* Dynamic Portal View Container */}
-        <main className="flex-1 p-3 sm:p-6 lg:p-8 overflow-y-auto max-w-full overflow-x-hidden">
+        <main className={`flex-1 overflow-y-auto max-w-full overflow-x-hidden ${
+          activePortal === 'doctor' ? 'p-0 w-full' : 'p-3 sm:p-6 lg:p-8'
+        }`}>
           
           {/* 1. PATIENT / CLIENT PORTAL */}
           {activePortal === 'patient' && (
@@ -664,10 +597,63 @@ export default function App() {
             />
           )}
 
-          {/* 2. DOCTOR / CLINICIAN PORTAL */}
+          {/* 2. DOCTOR / CLINICIAN PORTAL (Full Screen with 6 Windows including Workstation) */}
           {activePortal === 'doctor' && (
+            <DoctorAppPortalView
+              patients={patients}
+              activePatient={activePatient}
+              onSelectPatient={handleSelectPatient}
+              doctors={doctors}
+              appointments={appointments}
+              prescriptions={prescriptions}
+              scaleResults={scaleResults}
+              messages={messages}
+              notifications={notifications}
+              auditLogs={auditLogs}
+              currentStaff={currentStaff}
+              onSendMessage={handleSendMessage}
+              onDeleteMessage={handleDeleteMessage}
+              onTogglePinMessage={handleTogglePinMessage}
+              onToggleFavoriteMessage={handleToggleFavoriteMessage}
+              onReactToMessage={handleReactToMessage}
+              onSaveToJournal={handleSaveToJournal}
+              onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
+              onOpenClinicalForm={handleOpenClinicalForm}
+              onOpenScaleRunner={handleOpenScaleRunner}
+              onOpenNewPrescription={() => setIsPrescriptionModalOpen(true)}
+              onOpenPatientFile={(p) => {
+                setSelectedPatientForFile(p);
+                setIsPatientFileModalOpen(true);
+              }}
+              onSwitchStaff={() => setIsStaffAuthModalOpen(true)}
+              onReturnToMainPage={() => setActivePortal('patient')}
+              onSwitchPortal={(portal) => setActivePortal(portal)}
+              theme={theme}
+              onToggleTheme={toggleTheme}
+              onOpenOverview={() => setIsOverviewModalOpen(true)}
+            />
+          )}
+
+          {false && (
             <div>
-              {currentTab === 'dashboard' && (
+                <div className="mb-4 p-3.5 bg-linear-to-r from-blue-700 to-indigo-700 text-white rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
+                  <div className="flex items-center gap-2.5">
+                    <Sparkles className="w-5 h-5 text-amber-300 shrink-0" />
+                    <div>
+                      <strong className="block text-sm">أنت في محطة العمل السريرية الكاملة للأجهزة المكتبية</strong>
+                      <span className="text-xs text-blue-100">فحص الحالة العقلية MSE، دليل DSM-5، وإدارة الوصفات E-Rx</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDoctorViewMode('app')}
+                    className="px-4 py-2 bg-white text-blue-900 font-bold rounded-xl text-xs hover:bg-blue-50 transition-colors shadow-xs shrink-0 cursor-pointer"
+                  >
+                    العودة إلى تطبيق الطبيب (الـ 5 شاشات) ←
+                  </button>
+                </div>
+
+                {currentTab === 'dashboard' && (
                 <DashboardView
                   patients={patients}
                   activePatient={activePatient}
@@ -874,24 +860,26 @@ export default function App() {
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation Bar */}
-      <MobileBottomNav
-        activePortal={activePortal}
-        setActivePortal={setActivePortal}
-        patientTab={patientTab}
-        onSelectPatientTab={(tab) => {
-          setActivePortal('patient');
-          setPatientTab(tab);
-        }}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        onOpenBooking={() => {
-          setBookingInitialDeptId(departments[0]?.id || 'psychiatry');
-          setBookingInitialStep(1);
-          setIsBookingModalOpen(true);
-        }}
-        unreadChatCount={messages.filter(m => !m.isRead && m.senderRole === 'doctor').length}
-      />
+      {/* Mobile Bottom Navigation Bar - only rendered on patient portal */}
+      {activePortal === 'patient' && (
+        <MobileBottomNav
+          activePortal={activePortal}
+          setActivePortal={setActivePortal}
+          patientTab={patientTab}
+          onSelectPatientTab={(tab) => {
+            setActivePortal('patient');
+            setPatientTab(tab);
+          }}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onOpenBooking={() => {
+            setBookingInitialDeptId(departments[0]?.id || 'psychiatry');
+            setBookingInitialStep(1);
+            setIsBookingModalOpen(true);
+          }}
+          unreadChatCount={messages.filter(m => !m.isRead && m.senderRole === 'doctor').length}
+        />
+      )}
 
       {/* Modals & Dialogs */}
       <StaffAuthModal
