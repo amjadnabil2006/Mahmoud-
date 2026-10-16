@@ -39,6 +39,7 @@ import { AdminGroupTherapyTab } from '../components/admin/AdminGroupTherapyTab';
 import { AdminFormBuilderTab } from '../components/admin/AdminFormBuilderTab';
 import { AdminRBACControlTab } from '../components/admin/AdminRBACControlTab';
 import { AdminClinicalInspectModal } from '../components/admin/AdminClinicalInspectModal';
+import { CoolMindLogo } from '../components/CoolMindLogo';
 import { api, INITIAL_SETTINGS } from '../services/api';
 
 export type AdminTabId = 
@@ -257,19 +258,24 @@ export const AdminPortalView: React.FC<Props> = ({
       {/* Top Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-teal-950 rounded-2xl p-6 text-white shadow-md">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-bold border border-teal-500/30">
-                لوحة تحكم إدارة المنصة والعيادة (Admin & System Portal)
-              </span>
-              <span className="text-xs text-slate-400">CoolMind Enterprise OS</span>
+          <div className="flex items-start gap-4">
+            <div className="p-2 bg-slate-800/90 rounded-2xl border border-slate-700/80 shadow-md shrink-0 hidden sm:block">
+              <CoolMindLogo size="sm" variant="icon" glow />
             </div>
-            <h1 className="text-2xl font-black text-white mt-1">
-              مركز الإدارة العليا، الصلاحيات، والـ API وقاعدة البيانات
-            </h1>
-            <p className="text-xs text-slate-300 mt-1">
-              متابعة مؤشرات العيادة العامة، إدارة الكادر الطبي، التحقق من السجلات، ومختبر الـ API المباشر.
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-bold border border-teal-500/30">
+                  لوحة تحكم إدارة المنصة والعيادة (Admin & System Portal)
+                </span>
+                <span className="text-xs text-slate-400">CoolMind Enterprise OS</span>
+              </div>
+              <h1 className="text-2xl font-black text-white mt-1">
+                مركز الإدارة العليا، الصلاحيات، والـ API وقاعدة البيانات
+              </h1>
+              <p className="text-xs text-slate-300 mt-1">
+                متابعة مؤشرات العيادة العامة، إدارة الكادر الطبي، التحقق من السجلات، ومختبر الـ API المباشر.
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { UserRole, Patient, PortalType, ThemeMode, AppNotification } from '../types';
 import { NotificationsPopover } from './NotificationsPopover';
+import { CoolMindLogo } from './CoolMindLogo';
 
 interface HeaderProps {
   currentRole: UserRole;
@@ -64,24 +65,20 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20 gap-2">
           
-          {/* Logo & Brand */}
+          {/* Official CoolMind Logo & Brand */}
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="w-9 h-9 sm:w-11 sm:h-11 shrink-0 rounded-xl bg-gradient-to-tr from-teal-700 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-teal-700/15">
-              <Brain className="w-5 h-5 sm:w-6 sm:h-6" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white truncate">
-                  Cool<span className="text-teal-600 dark:text-teal-400">Mind</span>
-                </span>
-                <span className="hidden xs:inline text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950 text-teal-800 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800 shrink-0">
-                  منظومة متكاملة
-                </span>
-              </div>
-              <p className="hidden sm:block text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
-                بوابات المريض · الطبيب · الإدارة و API
-              </p>
-            </div>
+            <button
+              onClick={onOpenOverview}
+              className="flex items-center gap-2 sm:gap-3 text-right hover:opacity-95 transition-opacity cursor-pointer group focus:outline-none"
+              title="مركز CoolMind للطب النفسي والرعاية المتكاملة"
+            >
+              <CoolMindLogo 
+                size="md" 
+                variant="horizontal" 
+                showSubtitle={true} 
+                showArabicTagline={true} 
+              />
+            </button>
           </div>
 
           {/* Desktop Portals Navigation Hub */}

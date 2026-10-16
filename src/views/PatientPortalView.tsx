@@ -109,6 +109,8 @@ import { GroupTherapyModal } from '../components/GroupTherapyModal';
 import { DoctorChatModal } from '../components/DoctorChatModal';
 import { MessageActionModal } from '../components/MessageActionModal';
 import { DoctorsVerticalChatList } from '../components/DoctorsVerticalChatList';
+import { CoolMindLogo } from '../components/CoolMindLogo';
+import { resolvePlayableAudioUrl, speakVoiceMessage, stopSpokenVoice } from '../utils/audioRecorder';
 
 export type PatientTabId = 'departments' | 'overview' | 'appointments' | 'records' | 'invoices' | 'scales' | 'exercises' | 'messages' | 'account';
 
@@ -335,6 +337,7 @@ export const PatientPortalView: React.FC<Props> = ({
       if (tabAudioElementRef.current) {
         tabAudioElementRef.current.pause();
       }
+      stopSpokenVoice();
       setTabPlayingAudioId(null);
       if (tabAudioPlaybackIntervalRef.current) clearInterval(tabAudioPlaybackIntervalRef.current);
       return;
@@ -343,13 +346,19 @@ export const PatientPortalView: React.FC<Props> = ({
     if (tabAudioElementRef.current) {
       tabAudioElementRef.current.pause();
     }
+    stopSpokenVoice();
     if (tabAudioPlaybackIntervalRef.current) clearInterval(tabAudioPlaybackIntervalRef.current);
 
     setTabPlayingAudioId(msgId);
     setTabPlaybackProgress(prev => ({ ...prev, [msgId]: 0 }));
 
-    if (audioUrl && audioUrl.startsWith('blob:')) {
-      const audio = new Audio(audioUrl);
+    const playableAudioUrl = resolvePlayableAudioUrl(audioUrl, durationSeconds, 'patient');
+
+    // Speak audio text through device speakers
+    speakVoiceMessage(undefined, 'patient');
+
+    if (playableAudioUrl) {
+      const audio = new Audio(playableAudioUrl);
       tabAudioElementRef.current = audio;
 
       audio.play().catch(e => console.warn(e));
@@ -362,10 +371,12 @@ export const PatientPortalView: React.FC<Props> = ({
       };
 
       audio.onended = () => {
+        stopSpokenVoice();
         setTabPlayingAudioId(null);
         setTabPlaybackProgress(prev => ({ ...prev, [msgId]: 100 }));
       };
       audio.onerror = () => {
+        stopSpokenVoice();
         setTabPlayingAudioId(null);
       };
     } else {
@@ -711,7 +722,25 @@ export const PatientPortalView: React.FC<Props> = ({
         <div className="space-y-12">
           {/* Hero Section */}
           <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-br from-teal-900 via-slate-900 to-teal-950 text-white shadow-2xl relative overflow-hidden">
+            {/* Subtle background ambient emblem glow */}
+            <div className="absolute -left-12 -top-12 opacity-15 pointer-events-none hidden md:block">
+              <CoolMindLogo size={320} variant="icon" />
+            </div>
+
             <div className="relative z-10 max-w-3xl space-y-6">
+              {/* Brand Center Badge */}
+              <div className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/10 text-white border border-white/20 backdrop-blur-md shadow-md">
+                <CoolMindLogo size="sm" variant="icon" glow />
+                <div className="text-right">
+                  <div className="text-xs font-black tracking-wide text-teal-200">
+                    CoolMind · المركز المتكامل للرعاية النفسية
+                  </div>
+                  <div className="text-[9px] font-bold text-teal-100/80 uppercase tracking-wider">
+                    PSYCHIATRIC, BEHAVIORAL, SOCIAL, & LIFE COACHING CENTER
+                  </div>
+                </div>
+              </div>
+
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 text-teal-100 text-xs font-bold border border-white/15">
                   <ShieldCheck className="w-3.5 h-3.5 text-teal-300" />

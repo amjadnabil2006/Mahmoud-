@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { StaffUser, UserRole } from '../types';
 import { DEFAULT_STAFF_USERS, staffAuthService } from '../services/staffAuth';
+import { CoolMindLogo } from './CoolMindLogo';
 
 interface Props {
   isOpen: boolean;
@@ -70,8 +71,8 @@ export const StaffAuthModal: React.FC<Props> = ({
           </button>
 
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-teal-500/20 text-teal-400 border border-teal-500/30 flex items-center justify-center">
-              <Stethoscope className="w-6 h-6" />
+            <div className="p-1 rounded-2xl bg-slate-800/80 border border-teal-500/30 flex items-center justify-center shrink-0 shadow-md">
+              <CoolMindLogo size="sm" variant="icon" glow />
             </div>
             <div>
               <div className="flex items-center gap-2">

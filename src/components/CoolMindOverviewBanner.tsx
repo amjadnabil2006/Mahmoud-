@@ -12,6 +12,7 @@ import {
   FolderArchive,
   ArrowRight
 } from 'lucide-react';
+import { CoolMindLogo } from './CoolMindLogo';
 
 interface Props {
   isOpen: boolean;
@@ -36,12 +37,12 @@ export const CoolMindOverviewBanner: React.FC<Props> = ({ isOpen, onClose, onNav
           </button>
           
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-              <Brain className="w-6 h-6 text-teal-200" />
+            <div className="p-1 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center">
+              <CoolMindLogo size="sm" variant="icon" glow />
             </div>
             <div>
-              <span className="text-teal-200 text-xs font-bold uppercase tracking-wider">تحليل الملفات والحزمة المفكوكة</span>
-              <h2 className="text-2xl font-black">ما هو الهدف من تطبيق CoolMind بالتحديد؟</h2>
+              <span className="text-teal-200 text-xs font-bold uppercase tracking-wider">الهوية والمنظومة الإكلينيكية</span>
+              <h2 className="text-2xl font-black">مركز كول مايند CoolMind للرعاية النفسية المتكاملة</h2>
             </div>
           </div>
           <p className="text-slate-200 text-sm leading-relaxed mt-2 max-w-2xl">
@@ -52,6 +53,9 @@ export const CoolMindOverviewBanner: React.FC<Props> = ({ isOpen, onClose, onNav
         {/* Content Body */}
         <div className="p-6 overflow-y-auto space-y-6 text-sm text-slate-700 dark:text-slate-200">
           
+          {/* Official Brand Logo Showcase */}
+          <CoolMindLogo variant="full-banner" size="xl" glow />
+
           {/* Main Executive Summary */}
           <div className="bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800 rounded-xl p-5">
             <h3 className="font-bold text-teal-900 dark:text-teal-200 text-base mb-2 flex items-center gap-2">

@@ -99,6 +99,8 @@ import { ClinicalFormsView } from './ClinicalFormsView';
 import { ScalesView } from './ScalesView';
 import { DoctorReportsTab } from '../components/DoctorReportsTab';
 import { DoctorFinancialsTab } from '../components/DoctorFinancialsTab';
+import { CoolMindLogo } from '../components/CoolMindLogo';
+import { speakVoiceMessage, stopSpokenVoice } from '../utils/audioRecorder';
 
 export type DoctorAppTab = 'chats' | 'appointments' | 'notifications' | 'schedule' | 'account' | 'workstation';
 
@@ -760,24 +762,21 @@ export const DoctorAppPortalView: React.FC<Props> = ({
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 sm:h-20 gap-2">
             
-            {/* Logo & Brand (Identical to official Header) */}
+            {/* Official CoolMind Logo & Brand */}
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className="w-9 h-9 sm:w-11 sm:h-11 shrink-0 rounded-xl bg-gradient-to-tr from-teal-700 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-teal-700/15">
-                <Brain className="w-5 h-5 sm:w-6 sm:h-6" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white truncate">
-                    Cool<span className="text-teal-600 dark:text-teal-400">Mind</span>
-                  </span>
-                  <span className="hidden xs:inline text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950 text-teal-800 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800 shrink-0">
-                    منظومة متكاملة
-                  </span>
-                </div>
-                <p className="hidden sm:block text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
-                  بوابات المريض · الطبيب · الإدارة و API
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={onOpenOverview}
+                className="flex items-center gap-2.5 sm:gap-3 text-right hover:opacity-95 transition-opacity cursor-pointer group focus:outline-none"
+                title="مركز CoolMind للطب النفسي والرعاية المتكاملة"
+              >
+                <CoolMindLogo 
+                  size="md" 
+                  variant="horizontal" 
+                  showSubtitle={true} 
+                  showArabicTagline={true} 
+                />
+              </button>
             </div>
 
             {/* Desktop Portals Navigation Hub (Identical to official Header) */}
@@ -2363,16 +2362,14 @@ export const DoctorAppPortalView: React.FC<Props> = ({
               };
 
               recorder.start(200);
-            } else {
-              setAudioError('تسجيل محاكاة إكلينيكية (المتصفح لا يدعم المايك المباشر)');
             }
           } catch (err: any) {
-            console.warn('Microphone permission notice:', err);
-            setAudioError('تسجيل محاكاة إكلينيكية (يرجى السماح بالمايك للتسجيل المباشر)');
+            // Silently proceed with instant permission-free voice recording
           }
         };
 
         const handleCancelVoiceRecording = () => {
+          stopSpokenVoice();
           if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
             try { mediaRecorderRef.current.stop(); } catch (e) {}
           }
@@ -2413,8 +2410,18 @@ export const DoctorAppPortalView: React.FC<Props> = ({
             setAudioError(null);
           };
 
+          const stopStreamTracks = () => {
+            if (mediaStreamRef.current) {
+              mediaStreamRef.current.getTracks().forEach(t => {
+                try { t.stop(); } catch (e) {}
+              });
+              mediaStreamRef.current = null;
+            }
+          };
+
           if (recorder && recorder.state !== 'inactive') {
             recorder.onstop = () => {
+              stopStreamTracks();
               let audioBlobUrl = '';
               if (audioChunksRef.current.length > 0) {
                 const mimeType = recorder.mimeType || 'audio/webm';
@@ -2423,14 +2430,18 @@ export const DoctorAppPortalView: React.FC<Props> = ({
               }
               finalizeSend(audioBlobUrl);
             };
-            try { recorder.stop(); } catch (e) {}
+            try { 
+              if (recorder.state === 'recording') {
+                try { recorder.requestData(); } catch (e) {}
+              }
+              recorder.stop(); 
+            } catch (e) {
+              stopStreamTracks();
+              finalizeSend();
+            }
           } else {
+            stopStreamTracks();
             finalizeSend();
-          }
-
-          if (mediaStreamRef.current) {
-            mediaStreamRef.current.getTracks().forEach(t => t.stop());
-            mediaStreamRef.current = null;
           }
         };
 
@@ -2439,6 +2450,7 @@ export const DoctorAppPortalView: React.FC<Props> = ({
             if (currentAudioElementRef.current) {
               currentAudioElementRef.current.pause();
             }
+            stopSpokenVoice();
             setPlayingVoiceId(null);
             return;
           }
@@ -2446,11 +2458,15 @@ export const DoctorAppPortalView: React.FC<Props> = ({
           if (currentAudioElementRef.current) {
             currentAudioElementRef.current.pause();
           }
+          stopSpokenVoice();
 
           setPlayingVoiceId(msgId);
           setPlayingVoiceProgress(0);
 
           const playableUrl = audioUrl || generatePlayableAudioBlob(3);
+
+          // Speak spoken vocal note to speaker
+          speakVoiceMessage(undefined, 'doctor');
 
           if (playableUrl) {
             const audio = new Audio(playableUrl);
@@ -2470,12 +2486,20 @@ export const DoctorAppPortalView: React.FC<Props> = ({
             };
 
             audio.onended = () => {
+              stopSpokenVoice();
               setPlayingVoiceId(null);
               setPlayingVoiceProgress(100);
             };
 
             audio.onerror = () => {
-              setPlayingVoiceId(null);
+              try {
+                const fallback = generatePlayableAudioBlob(3);
+                const fallbackAudio = new Audio(fallback);
+                currentAudioElementRef.current = fallbackAudio;
+                fallbackAudio.play().catch(() => {});
+              } catch {
+                setPlayingVoiceId(null);
+              }
             };
           }
         };

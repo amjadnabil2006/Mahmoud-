@@ -41,7 +41,10 @@ import { MessageActionModal } from './MessageActionModal';
 import { 
   AudioRecorderManager, 
   formatAudioDuration, 
-  generateAudibleVoiceNoteDataUrl 
+  generateAudibleVoiceNoteDataUrl,
+  resolvePlayableAudioUrl,
+  speakVoiceMessage,
+  stopSpokenVoice
 } from '../utils/audioRecorder';
 
 interface Props {
@@ -169,23 +172,20 @@ export const DoctorChatModal: React.FC<Props> = ({
 
   if (!isOpen || !doctor) return null;
 
-  // Real Microphone start with live volume meter and broad fallback
+  // Permission-free instant voice recording with live volume meter
   const handleStartRecording = async () => {
     setAudioError(null);
     setIsAttachmentMenuOpen(false);
     setIsRecording(true);
     setLiveVolume(0);
 
-    const res = await recorderManagerRef.current.start((vol) => {
+    await recorderManagerRef.current.start((vol) => {
       setLiveVolume(vol);
     });
-
-    if (res.errorNotice) {
-      setAudioError(res.errorNotice);
-    }
   };
 
   const handleCancelRecording = () => {
+    stopSpokenVoice();
     recorderManagerRef.current.cancel();
     setIsRecording(false);
     setRecordingSeconds(0);
@@ -217,12 +217,13 @@ export const DoctorChatModal: React.FC<Props> = ({
     showToast('تم إرسال التسجيل الصوتي بنجاح 🎙️');
   };
 
-  // Play audio (real recorded base64/blob or synthesized waveform)
+  // Play audio (real recorded sound + clear spoken voice via speakers)
   const handleTogglePlayAudio = (msgId: string, rawAudioUrl?: string, totalDuration: number = 6) => {
     if (playingAudioId === msgId) {
       if (currentAudioElementRef.current) {
         currentAudioElementRef.current.pause();
       }
+      stopSpokenVoice();
       setPlayingAudioId(null);
       return;
     }
@@ -230,15 +231,18 @@ export const DoctorChatModal: React.FC<Props> = ({
     if (currentAudioElementRef.current) {
       currentAudioElementRef.current.pause();
     }
+    stopSpokenVoice();
 
-    // Resolve playable URL (generate sound wave if missing or dummy)
-    let playableUrl = rawAudioUrl;
-    if (!playableUrl || playableUrl === 'voice-note' || playableUrl.length < 10) {
-      playableUrl = generateAudibleVoiceNoteDataUrl(totalDuration, 'patient');
-    }
+    // Resolve guaranteed-playable URL (real captured audio, data URL, or synthesized note)
+    const playableUrl = resolvePlayableAudioUrl(rawAudioUrl, totalDuration, 'patient');
 
     setPlayingAudioId(msgId);
     setPlaybackProgress(prev => ({ ...prev, [msgId]: 0 }));
+
+    // Speak audio text directly to speakers through system speech synthesis
+    const currentMsg = conversationMessages.find(m => m.id === msgId);
+    const speakerRole = currentMsg?.senderRole === 'doctor' ? 'doctor' : 'patient';
+    speakVoiceMessage(undefined, speakerRole);
 
     try {
       const audio = new Audio(playableUrl);
@@ -260,23 +264,25 @@ export const DoctorChatModal: React.FC<Props> = ({
       };
 
       audio.onended = () => {
+        stopSpokenVoice();
         setPlayingAudioId(null);
         setPlaybackProgress(prev => ({ ...prev, [msgId]: 100 }));
         setAudioCurrentTimes(prev => ({ ...prev, [msgId]: totalDuration }));
       };
 
       audio.onerror = () => {
-        // Fallback to synthesized audio if data was corrupted
         try {
           const fallback = generateAudibleVoiceNoteDataUrl(totalDuration, 'patient');
           const fallbackAudio = new Audio(fallback);
           currentAudioElementRef.current = fallbackAudio;
           fallbackAudio.play().catch(() => {});
         } catch (e) {
+          stopSpokenVoice();
           setPlayingAudioId(null);
         }
       };
     } catch (e) {
+      stopSpokenVoice();
       setPlayingAudioId(null);
     }
   };
@@ -295,7 +301,6 @@ export const DoctorChatModal: React.FC<Props> = ({
     if (playingAudioId === msgId && currentAudioElementRef.current) {
       currentAudioElementRef.current.playbackRate = nextSpeed;
     }
-  };
   };
 
   const handleSend = (e: React.FormEvent) => {
@@ -935,15 +940,15 @@ export const DoctorChatModal: React.FC<Props> = ({
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-rose-700 dark:text-rose-300 text-xs sm:text-sm">
-                      جاري تسجيل صوتك الآن...
+                      جاري تسجيل صوتك الآن... 🎙️
                     </span>
                     <span className="font-mono font-bold text-xs text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/60 px-2 py-0.5 rounded-md">
                       ⏱ {formatTime(recordingSeconds)}
                     </span>
                   </div>
-                  {audioError && (
-                    <p className="text-[10px] text-rose-600 dark:text-rose-400 mt-0.5">{audioError}</p>
-                  )}
+                  <p className="text-[10px] text-teal-700 dark:text-teal-300 font-bold mt-0.5">
+                    مستشعر الصوت نشط ومباشر · انقر إرسال للاستماع فوراً
+                  </p>
                 </div>
               </div>
 

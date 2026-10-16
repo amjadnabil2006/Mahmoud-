@@ -22,6 +22,7 @@ import {
   Stethoscope,
   Smile
 } from 'lucide-react';
+import { CoolMindLogo } from './CoolMindLogo';
 
 export const AboutUsSection: React.FC = () => {
   return (
@@ -634,17 +635,11 @@ export const FooterSection: React.FC<{
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Col 1: Identity & About */}
           <div className="space-y-4 md:col-span-1">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center font-black">
-                CM
-              </div>
-              <div>
-                <span className="text-lg font-black text-white block">Coolmid Center</span>
-                <span className="text-[10px] text-teal-400 font-bold block">مركز كول مايند للرعاية النفسية</span>
-              </div>
+            <div className="p-3 bg-slate-800/80 rounded-2xl border border-slate-700/80 inline-block shadow-sm">
+              <CoolMindLogo size="sm" variant="horizontal" showSubtitle={true} showArabicTagline={true} />
             </div>
             <p className="text-xs text-slate-400 leading-relaxed">
-              المنظومة الرقمية الإكلينيكية الأولى للرعاية النفسية المتكاملة، استشارات الطب النفسي والعلاج السلوكي وتغذية الدماغ وإعادة التأهيل.
+              المركز المتكامل للرعاية النفسية، الاستشارات السلوكية، التغذية العلاجية، وتطوير الذات — منظومة إكلينيكية مرخصة ومعتمدة وفق المعايير الطبية الدولية.
             </p>
             <div className="space-y-1.5 text-xs text-slate-300 bg-slate-800/60 p-3.5 rounded-2xl border border-slate-700/60">
               <div className="flex items-center gap-1.5 text-teal-400 font-bold">

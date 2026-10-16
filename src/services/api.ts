@@ -205,6 +205,34 @@ export const INITIAL_MESSAGES: ChatMessage[] = [
     text: 'ممتاز جداً ومبشر! استمري على نفس التمارين وسنراجع مقياس PHQ-9 في جلستنا القادمة.',
     timestamp: '2026-09-29T10:30:00Z',
     isRead: true
+  },
+  {
+    id: 'msg-4-voice',
+    senderId: 'pat-101',
+    senderName: 'سارة خالد المنصور',
+    senderRole: 'patient',
+    doctorId: 'doc-moayad',
+    doctorName: 'أ. محمد المؤيد',
+    patientId: 'pat-101',
+    text: '🎙️ تسجيل صوتي (00:08)',
+    audioUrl: '',
+    audioDurationSeconds: 8,
+    timestamp: '2026-09-29T10:32:00Z',
+    isRead: true
+  },
+  {
+    id: 'msg-5-voice',
+    senderId: 'doc-moayad',
+    senderName: 'أ. محمد المؤيد',
+    senderRole: 'doctor',
+    doctorId: 'doc-moayad',
+    doctorName: 'أ. محمد المؤيد',
+    patientId: 'pat-101',
+    text: '🎙️ تسجيل صوتي من المعالج (00:06)',
+    audioUrl: '',
+    audioDurationSeconds: 6,
+    timestamp: '2026-09-29T10:35:00Z',
+    isRead: true
   }
 ];
 

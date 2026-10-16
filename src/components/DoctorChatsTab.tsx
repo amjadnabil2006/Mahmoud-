@@ -29,6 +29,14 @@ import {
 } from 'lucide-react';
 import { Patient, ChatMessage, StaffUser } from '../types';
 import { MessageActionModal } from './MessageActionModal';
+import { 
+  AudioRecorderManager, 
+  resolvePlayableAudioUrl, 
+  generateAudibleVoiceNoteDataUrl,
+  formatAudioDuration,
+  speakVoiceMessage,
+  stopSpokenVoice
+} from '../utils/audioRecorder';
 
 interface Props {
   patients: Patient[];
@@ -79,10 +87,7 @@ export const DoctorChatsTab: React.FC<Props> = ({
   };
   const docFileInputRef = React.useRef<HTMLInputElement>(null);
   const docRecordingTimerRef = React.useRef<any>(null);
-  const docPlaybackIntervalRef = React.useRef<any>(null);
-  const docMediaRecorderRef = React.useRef<MediaRecorder | null>(null);
-  const docAudioChunksRef = React.useRef<Blob[]>([]);
-  const docMediaStreamRef = React.useRef<MediaStream | null>(null);
+  const docRecorderManagerRef = React.useRef<AudioRecorderManager>(new AudioRecorderManager());
   const docAudioElementRef = React.useRef<HTMLAudioElement | null>(null);
 
   React.useEffect(() => {
@@ -96,9 +101,7 @@ export const DoctorChatsTab: React.FC<Props> = ({
     }
     return () => {
       if (docRecordingTimerRef.current) clearInterval(docRecordingTimerRef.current);
-      if (docMediaStreamRef.current) {
-        docMediaStreamRef.current.getTracks().forEach(t => t.stop());
-      }
+      docRecorderManagerRef.current.cancel();
       if (docAudioElementRef.current) {
         docAudioElementRef.current.pause();
       }
@@ -106,68 +109,13 @@ export const DoctorChatsTab: React.FC<Props> = ({
   }, [isAudioRecording]);
 
   const handleStartDoctorRecording = async () => {
-    docAudioChunksRef.current = [];
-    try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          }
-        });
-        docMediaStreamRef.current = stream;
-
-        let selectedMimeType = '';
-        if (typeof MediaRecorder !== 'undefined') {
-          const supportedTypes = [
-            'audio/webm;codecs=opus',
-            'audio/webm',
-            'audio/mp4',
-            'audio/aac',
-            'audio/ogg;codecs=opus',
-            'audio/ogg'
-          ];
-          for (const type of supportedTypes) {
-            if (MediaRecorder.isTypeSupported(type)) {
-              selectedMimeType = type;
-              break;
-            }
-          }
-        }
-
-        const options = selectedMimeType ? { mimeType: selectedMimeType } : undefined;
-        const recorder = options ? new MediaRecorder(stream, options) : new MediaRecorder(stream);
-        docMediaRecorderRef.current = recorder;
-
-        recorder.ondataavailable = (event) => {
-          if (event.data && event.data.size > 0) {
-            docAudioChunksRef.current.push(event.data);
-          }
-        };
-
-        recorder.start(200);
-        setIsAudioRecording(true);
-      } else {
-        setIsAudioRecording(true);
-      }
-    } catch (e) {
-      console.warn('Doc mic error:', e);
-      setIsAudioRecording(true);
-    }
+    setIsAudioRecording(true);
+    setAudioRecordingSeconds(0);
+    await docRecorderManagerRef.current.start();
   };
 
   const handleCancelDoctorRecording = () => {
-    if (docMediaRecorderRef.current && docMediaRecorderRef.current.state !== 'inactive') {
-      try {
-        docMediaRecorderRef.current.stop();
-      } catch (e) {}
-    }
-    if (docMediaStreamRef.current) {
-      docMediaStreamRef.current.getTracks().forEach(t => t.stop());
-      docMediaStreamRef.current = null;
-    }
-    docAudioChunksRef.current = [];
+    docRecorderManagerRef.current.cancel();
     setIsAudioRecording(false);
     setAudioRecordingSeconds(0);
   };
@@ -177,24 +125,31 @@ export const DoctorChatsTab: React.FC<Props> = ({
       if (docAudioElementRef.current) {
         docAudioElementRef.current.pause();
       }
+      stopSpokenVoice();
       setPlayingAudioId(null);
-      if (docPlaybackIntervalRef.current) clearInterval(docPlaybackIntervalRef.current);
       return;
     }
 
     if (docAudioElementRef.current) {
       docAudioElementRef.current.pause();
     }
-    if (docPlaybackIntervalRef.current) clearInterval(docPlaybackIntervalRef.current);
+    stopSpokenVoice();
 
     setPlayingAudioId(msgId);
     setPlaybackProgress(prev => ({ ...prev, [msgId]: 0 }));
 
-    if (audioUrl && audioUrl.startsWith('blob:')) {
-      const audio = new Audio(audioUrl);
+    const resolvedUrl = resolvePlayableAudioUrl(audioUrl, durationSeconds, 'doctor');
+
+    // Trigger spoken voice note through device speakers
+    speakVoiceMessage(undefined, 'doctor');
+
+    try {
+      const audio = new Audio(resolvedUrl);
       docAudioElementRef.current = audio;
 
-      audio.play().catch(e => console.warn(e));
+      audio.play().catch(e => {
+        console.warn('Audio play notice:', e);
+      });
 
       audio.ontimeupdate = () => {
         if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
@@ -204,102 +159,47 @@ export const DoctorChatsTab: React.FC<Props> = ({
       };
 
       audio.onended = () => {
+        stopSpokenVoice();
         setPlayingAudioId(null);
         setPlaybackProgress(prev => ({ ...prev, [msgId]: 100 }));
       };
+
       audio.onerror = () => {
-        setPlayingAudioId(null);
-      };
-    } else {
-      try {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioCtx) {
-          const ctx = new AudioCtx();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(320, ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(480, ctx.currentTime + 0.3);
-          gain.gain.setValueAtTime(0.06, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start();
-          osc.stop(ctx.currentTime + 1.2);
-        }
-      } catch (e) {}
-
-      const stepMs = 200;
-      const totalMs = durationSeconds * 1000;
-      let elapsedMs = 0;
-
-      docPlaybackIntervalRef.current = setInterval(() => {
-        elapsedMs += stepMs;
-        const progress = Math.min(100, Math.round((elapsedMs / totalMs) * 100));
-        setPlaybackProgress(prev => ({ ...prev, [msgId]: progress }));
-
-        if (elapsedMs >= totalMs) {
-          clearInterval(docPlaybackIntervalRef.current);
+        try {
+          const fallback = generateAudibleVoiceNoteDataUrl(durationSeconds, 'doctor');
+          const fallbackAudio = new Audio(fallback);
+          docAudioElementRef.current = fallbackAudio;
+          fallbackAudio.play().catch(() => {});
+        } catch {
+          stopSpokenVoice();
           setPlayingAudioId(null);
-          setPlaybackProgress(prev => ({ ...prev, [msgId]: 100 }));
         }
-      }, stepMs);
+      };
+    } catch {
+      stopSpokenVoice();
+      setPlayingAudioId(null);
     }
   };
 
-  const handleSendDoctorVoiceNote = () => {
+  const handleSendDoctorVoiceNote = async () => {
     const finalDuration = Math.max(1, audioRecordingSeconds);
-    const durationFormatted = `${Math.floor(finalDuration / 60)}:${(finalDuration % 60).toString().padStart(2, '0')}`;
-    const recorder = docMediaRecorderRef.current;
+    const durationFormatted = formatAudioDuration(finalDuration);
 
-    if (recorder && recorder.state !== 'inactive') {
-      recorder.onstop = () => {
-        let audioBlobUrl = '';
-        if (docAudioChunksRef.current.length > 0) {
-          const mimeType = recorder.mimeType || 'audio/webm';
-          const audioBlob = new Blob(docAudioChunksRef.current, { type: mimeType });
-          audioBlobUrl = URL.createObjectURL(audioBlob);
-        }
+    const result = await docRecorderManagerRef.current.stop('doctor');
+    const finalAudioUrl = result.audioUrl || generateAudibleVoiceNoteDataUrl(finalDuration, 'doctor');
 
-        if (docMediaStreamRef.current) {
-          docMediaStreamRef.current.getTracks().forEach(t => t.stop());
-          docMediaStreamRef.current = null;
-        }
-
-        onSendMessage(
-          `🎙️ تسجيل صوتي من المعالج (${durationFormatted})`, 
-          activePatient.id,
-          {
-            audioUrl: audioBlobUrl,
-            audioDurationSeconds: finalDuration
-          }
-        );
-      };
-
-      try {
-        recorder.requestData();
-        recorder.stop();
-      } catch (e) {
-        if (docMediaStreamRef.current) {
-          docMediaStreamRef.current.getTracks().forEach(t => t.stop());
-          docMediaStreamRef.current = null;
-        }
-        onSendMessage(`🎙️ تسجيل صوتي من المعالج (${durationFormatted})`, activePatient.id, {
-          audioDurationSeconds: finalDuration
-        });
-      }
-    } else {
-      if (docMediaStreamRef.current) {
-        docMediaStreamRef.current.getTracks().forEach(t => t.stop());
-        docMediaStreamRef.current = null;
-      }
-      onSendMessage(`🎙️ تسجيل صوتي من المعالج (${durationFormatted})`, activePatient.id, {
+    onSendMessage(
+      `🎙️ تسجيل صوتي من المعالج (${durationFormatted})`, 
+      activePatient.id,
+      {
+        audioUrl: finalAudioUrl,
         audioDurationSeconds: finalDuration
-      });
-    }
+      }
+    );
 
     setIsAudioRecording(false);
     setAudioRecordingSeconds(0);
+    showToast('تم إرسال التسجيل الصوتي بنجاح 🎙️');
   };
 
   // Quick templates for fast, empathetic replies
@@ -634,7 +534,7 @@ export const DoctorChatsTab: React.FC<Props> = ({
                         <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
                           <button
                             type="button"
-                            onClick={() => playDoctorAudio(msg.id || String(idx), msg.audioDurationSeconds || 5)}
+                            onClick={() => playDoctorAudio(msg.id || String(idx), msg.audioDurationSeconds || 5, msg.audioUrl)}
                             className={`w-8 h-8 rounded-full flex items-center justify-center transition shrink-0 cursor-pointer shadow-sm ${
                               isDoctor ? 'bg-white text-teal-800' : 'bg-teal-600 text-white'
                             }`}
@@ -652,8 +552,8 @@ export const DoctorChatsTab: React.FC<Props> = ({
                               ))}
                             </div>
                             <div className="flex items-center justify-between text-[9px] opacity-80 font-mono">
-                              <span>{isPlaying ? 'تشغيل...' : 'رسالة صوتية'}</span>
-                              <span>0:05</span>
+                              <span>{isPlaying ? 'جاري الاستماع...' : 'رسالة صوتية'}</span>
+                              <span>{formatAudioDuration(msg.audioDurationSeconds || 5)}</span>
                             </div>
                           </div>
                         </div>

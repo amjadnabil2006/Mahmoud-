@@ -12,6 +12,7 @@ import {
   EyeOff
 } from 'lucide-react';
 import { rbacService, AdminSession } from '../../services/rbac';
+import { CoolMindLogo } from '../CoolMindLogo';
 
 interface Props {
   onLoginSuccess: (session: AdminSession) => void;
@@ -52,10 +53,10 @@ export const AdminLoginGate: React.FC<Props> = ({ onLoginSuccess, onCancel }) =>
     <div className="min-h-[75vh] flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl text-right">
         
-        {/* Security Shield Icon Header */}
+        {/* Official Brand Logo & Security Header */}
         <div className="text-center space-y-3 pb-5 border-b border-slate-100 dark:border-slate-800">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200 dark:border-teal-800 flex items-center justify-center shadow-inner">
-            <ShieldCheck className="w-9 h-9 text-teal-600 dark:text-teal-400" />
+          <div className="flex justify-center mb-1">
+            <CoolMindLogo size="md" variant="horizontal" showSubtitle={true} />
           </div>
           <div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-bold mb-2">
