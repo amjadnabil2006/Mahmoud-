@@ -24,7 +24,8 @@ import {
   RotateCcw,
   SlidersHorizontal,
   Settings,
-  DollarSign
+  DollarSign,
+  LogOut
 } from 'lucide-react';
 import { Doctor, Patient, ClinicAnalytics, AuditLog, Appointment, TherapyExercise, ClinicSettings } from '../types';
 import { Department, CLINICAL_DEPARTMENTS, getDepartmentColorStyles } from '../data/departments';
@@ -86,6 +87,8 @@ interface Props {
   onResetDepartments?: () => Promise<void>;
   onOpenDepartmentManagerModal?: (dept?: Department) => void;
   onLogAudit?: (action: string, target: string) => void;
+  adminSession?: any;
+  onAdminLogout?: () => void;
 }
 
 export const AdminPortalView: React.FC<Props> = ({
@@ -99,6 +102,8 @@ export const AdminPortalView: React.FC<Props> = ({
   auditLogs,
   scaleResults = [],
   prescriptions = [],
+  adminSession,
+  onAdminLogout,
   onAddNewDoctor,
   onUpdateDoctor,
   onDeleteDoctor,
@@ -267,10 +272,16 @@ export const AdminPortalView: React.FC<Props> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {adminSession && (
+              <div className="text-right px-3 py-1.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs">
+                <span className="text-[10px] text-teal-400 block font-bold">جلسة إدارية موثقة 2FA</span>
+                <span className="text-white font-semibold">{adminSession.name || 'مدير المنصة'}</span>
+              </div>
+            )}
             <button
               onClick={() => setIsClinicalInspectOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-xs rounded-xl shadow-sm transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
             >
               <Lock className="w-4 h-4" />
               الاطلاع السريري المطلق الموثق
@@ -278,6 +289,17 @@ export const AdminPortalView: React.FC<Props> = ({
             <span className="text-xs font-mono font-bold text-teal-300 bg-teal-950/80 border border-teal-800 px-3 py-1.5 rounded-xl">
               ● API v1.4 Online
             </span>
+            {onAdminLogout && (
+              <button
+                onClick={onAdminLogout}
+                type="button"
+                className="flex items-center gap-1.5 px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/40 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                title="إنهاء الجلسة الإدارية وقفل اللوحة"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>تسجيل خروج</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

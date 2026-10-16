@@ -16,6 +16,8 @@ import { GroupTherapyModal } from './components/GroupTherapyModal';
 
 import { PatientPortalView } from './views/PatientPortalView';
 import { AdminPortalView } from './views/AdminPortalView';
+import { AdminLoginGate } from './components/admin/AdminLoginGate';
+import { rbacService, AdminSession } from './services/rbac';
 import { DashboardView } from './views/DashboardView';
 import { PsychiatryView } from './views/PsychiatryView';
 import { ScalesView } from './views/ScalesView';
@@ -75,8 +77,74 @@ export default function App() {
     return (localStorage.getItem('coolmind_theme') as ThemeMode) || 'light';
   });
 
-  // Active Portal: 'patient' | 'doctor' | 'admin'
-  const [activePortal, setActivePortal] = useState<PortalType>('doctor');
+  // Read initial portal from URL (hash, path, query param, or saved preference)
+  const getInitialPortal = (): PortalType => {
+    try {
+      const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+      if (hash === 'admin' || hash === 'doctor' || hash === 'patient') {
+        return hash as PortalType;
+      }
+      const path = window.location.pathname.replace(/^\//, '').split('/')[0].toLowerCase();
+      if (path === 'admin' || path === 'doctor' || path === 'patient') {
+        return path as PortalType;
+      }
+      const searchParams = new URLSearchParams(window.location.search);
+      const portalParam = searchParams.get('portal')?.toLowerCase();
+      if (portalParam === 'admin' || portalParam === 'doctor' || portalParam === 'patient') {
+        return portalParam as PortalType;
+      }
+      const saved = localStorage.getItem('coolmind_active_portal') as PortalType;
+      if (saved === 'admin' || saved === 'doctor' || saved === 'patient') {
+        return saved;
+      }
+    } catch {
+      // fallback
+    }
+    return 'patient';
+  };
+
+  // Active Portal: 'patient' | 'doctor' | 'admin' with direct URL sync
+  const [activePortal, setActivePortalState] = useState<PortalType>(getInitialPortal);
+
+  const setActivePortal = (p: PortalType) => {
+    setActivePortalState(p);
+    try {
+      localStorage.setItem('coolmind_active_portal', p);
+      if (window.location.hash !== `#${p}`) {
+        window.history.pushState(null, '', `#${p}`);
+      }
+    } catch (e) {
+      console.warn('Could not update history state', e);
+    }
+  };
+
+  // Synchronize portal state when browser back/forward or hash changes
+  useEffect(() => {
+    const handleUrlChange = () => {
+      const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+      if (hash === 'admin' || hash === 'doctor' || hash === 'patient') {
+        setActivePortalState(hash as PortalType);
+        return;
+      }
+      const path = window.location.pathname.replace(/^\//, '').split('/')[0].toLowerCase();
+      if (path === 'admin' || path === 'doctor' || path === 'patient') {
+        setActivePortalState(path as PortalType);
+        return;
+      }
+      const searchParams = new URLSearchParams(window.location.search);
+      const portalParam = searchParams.get('portal')?.toLowerCase();
+      if (portalParam === 'admin' || portalParam === 'doctor' || portalParam === 'patient') {
+        setActivePortalState(portalParam as PortalType);
+      }
+    };
+
+    window.addEventListener('hashchange', handleUrlChange);
+    window.addEventListener('popstate', handleUrlChange);
+    return () => {
+      window.removeEventListener('hashchange', handleUrlChange);
+      window.removeEventListener('popstate', handleUrlChange);
+    };
+  }, []);
 
   // Staff User authentication state
   const [currentStaff, setCurrentStaff] = useState<StaffUser | null>(() => {
@@ -84,6 +152,11 @@ export default function App() {
   });
   const [isStaffAuthModalOpen, setIsStaffAuthModalOpen] = useState(false);
   const [isJoinTeamModalOpen, setIsJoinTeamModalOpen] = useState(false);
+
+  // Admin Session state (OBS-A-001)
+  const [adminSession, setAdminSession] = useState<AdminSession | null>(() => {
+    return rbacService.getAdminSession();
+  });
 
   // Doctor tab state
   const [currentTab, setCurrentTab] = useState<TabId>('dashboard');
@@ -194,13 +267,29 @@ export default function App() {
   };
 
   const handleOpenScaleRunner = (scaleId?: string) => {
+    if (!rbacService.isFeatureAllowed(currentRole, 'clinical_scales_runner')) {
+      alert(`⚠️ عذراً، تطبيق المقاييس النفسية الرقمية محجوب عن دورك الإكلينيكي الحالي [${currentRole}] بموجب مصفوفة الصلاحيات المعتمدة من الإدارة (RBAC Restricted).`);
+      return;
+    }
     setRunnerScaleId(scaleId || 'phq-9');
     setIsScaleRunnerModalOpen(true);
   };
 
   const handleOpenClinicalForm = (formType: string = 'mse') => {
+    if (!rbacService.isFeatureAllowed(currentRole, 'clinical_forms_soap')) {
+      alert(`⚠️ عذراً، تدوين واعتماد النماذج السريرية (MSE / SOAP) محجوب عن دورك الحالي [${currentRole}] بموجب مصفوفة الصلاحيات المعتمدة من الإدارة (RBAC Restricted).`);
+      return;
+    }
     setClinicalFormType(formType);
     setIsClinicalFormModalOpen(true);
+  };
+
+  const handleOpenNewPrescription = () => {
+    if (!rbacService.isFeatureAllowed(currentRole, 'e_rx_prescriptions')) {
+      alert(`⚠️ عذراً، إصدار وتوقيع الوصفات الطبية النفسية محجوب عن دورك الحالي [${currentRole}] بموجب مصفوفة الصلاحيات المعتمدة من الإدارة (RBAC Restricted). يقتصر إصدار الأدوية على الأطباء النفسيين المرخصين.`);
+      return;
+    }
+    setIsPrescriptionModalOpen(true);
   };
 
   const handleMarkAllNotificationsRead = async () => {
@@ -523,6 +612,7 @@ export default function App() {
           <PortalSwitcherBanner
             activePortal={activePortal}
             setActivePortal={setActivePortal}
+            isAdminAuthenticated={!!adminSession}
           />
         </>
       )}
@@ -620,7 +710,7 @@ export default function App() {
               onUpdateAppointmentStatus={handleUpdateAppointmentStatus}
               onOpenClinicalForm={handleOpenClinicalForm}
               onOpenScaleRunner={handleOpenScaleRunner}
-              onOpenNewPrescription={() => setIsPrescriptionModalOpen(true)}
+              onOpenNewPrescription={handleOpenNewPrescription}
               onOpenPatientFile={(p) => {
                 setSelectedPatientForFile(p);
                 setIsPatientFileModalOpen(true);
@@ -811,39 +901,68 @@ export default function App() {
             </div>
           )}
 
-          {/* 3. ADMIN & CLINIC MANAGEMENT PORTAL */}
+          {/* 3. ADMIN & CLINIC MANAGEMENT PORTAL (OBS-A-001 Protected by AdminLoginGate) */}
           {activePortal === 'admin' && (
-            <AdminPortalView
-              analytics={analytics}
-              doctors={doctors}
-              patients={patients}
-              departments={departments}
-              appointments={appointments}
-              exercises={exercises}
-              settings={clinicSettings}
-              auditLogs={auditLogs}
-              scaleResults={scaleResults}
-              prescriptions={prescriptions}
-              onLogAudit={async (action, target) => {
-                await api.auditLogs.log({
-                  actorName: currentStaff?.name || 'مدير النظام (Super Admin)',
-                  actorRole: 'إدارة عليا',
-                  action,
-                  target,
-                  ipAddress: '192.168.1.1',
-                  status: 'نجاح'
-                });
-                const updatedLogs = await api.auditLogs.getAll();
-                setAuditLogs(updatedLogs);
-              }}
-              onAddNewDoctor={handleAddNewDoctor}
-              onUpdateDoctor={handleUpdateDoctor}
-              onDeleteDoctor={handleDeleteDoctor}
-              onAddNewPatient={handleAddNewPatient}
-              onUpdatePatient={handleUpdatePatient}
-              onDeletePatient={handleDeletePatient}
-              onUpdateAppointment={handleUpdateAppointment}
-              onDeleteAppointment={handleDeleteAppointment}
+            !adminSession ? (
+              <AdminLoginGate
+                onLoginSuccess={(session) => {
+                  setAdminSession(session);
+                  api.auditLogs.log({
+                    actorName: session.name,
+                    actorRole: 'إدارة عليا (Super Admin)',
+                    action: 'تسجيل دخول ناجح للوحة الإدارة والتحكم',
+                    target: 'جلسة إدارية موثقة 2FA',
+                    ipAddress: '192.168.1.1',
+                    status: 'نجاح'
+                  });
+                }}
+                onCancel={() => setActivePortal('patient')}
+              />
+            ) : (
+              <AdminPortalView
+                adminSession={adminSession}
+                onAdminLogout={() => {
+                  rbacService.logoutAdmin();
+                  setAdminSession(null);
+                  api.auditLogs.log({
+                    actorName: adminSession.name,
+                    actorRole: 'إدارة عليا (Super Admin)',
+                    action: 'تسجيل خروج إداري وقفل اللوحة',
+                    target: 'إنهاء الجلسة',
+                    ipAddress: '192.168.1.1',
+                    status: 'نجاح'
+                  });
+                }}
+                analytics={analytics}
+                doctors={doctors}
+                patients={patients}
+                departments={departments}
+                appointments={appointments}
+                exercises={exercises}
+                settings={clinicSettings}
+                auditLogs={auditLogs}
+                scaleResults={scaleResults}
+                prescriptions={prescriptions}
+                onLogAudit={async (action, target) => {
+                  await api.auditLogs.log({
+                    actorName: adminSession.name || currentStaff?.name || 'مدير النظام (Super Admin)',
+                    actorRole: 'إدارة عليا',
+                    action,
+                    target,
+                    ipAddress: '192.168.1.1',
+                    status: 'نجاح'
+                  });
+                  const updatedLogs = await api.auditLogs.getAll();
+                  setAuditLogs(updatedLogs);
+                }}
+                onAddNewDoctor={handleAddNewDoctor}
+                onUpdateDoctor={handleUpdateDoctor}
+                onDeleteDoctor={handleDeleteDoctor}
+                onAddNewPatient={handleAddNewPatient}
+                onUpdatePatient={handleUpdatePatient}
+                onDeletePatient={handleDeletePatient}
+                onUpdateAppointment={handleUpdateAppointment}
+                onDeleteAppointment={handleDeleteAppointment}
               onAddExercise={handleAddExercise}
               onUpdateExercise={handleUpdateExercise}
               onDeleteExercise={handleDeleteExercise}
@@ -855,7 +974,8 @@ export default function App() {
               onResetDepartments={handleResetDepartments}
               onOpenDepartmentManagerModal={handleOpenDepartmentManager}
             />
-          )}
+          )
+        )}
 
         </main>
       </div>

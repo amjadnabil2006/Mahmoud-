@@ -194,8 +194,55 @@ export const staffAuthService = {
     return user;
   },
 
+  getAllStaffUsers: (): StaffUser[] => {
+    try {
+      const saved = localStorage.getItem('coolmind_all_staff_users');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error('Error reading staff users', e);
+    }
+    return DEFAULT_STAFF_USERS;
+  },
+
+  updateStaffUserRole: (userId: string, newRole: UserRole): StaffUser[] => {
+    const all = staffAuthService.getAllStaffUsers();
+    const updated = all.map(u => {
+      if (u.id === userId) {
+        return {
+          ...u,
+          role: newRole,
+          specialty: newRole === 'psychiatrist' ? 'استشاري أول الطب النفسي والتشخيص الإكلينيكي' :
+                     newRole === 'psychologist' ? 'أخصائي علاج نفسي وسلوكي معرفي (CBT)' :
+                     newRole === 'nutritionist' ? 'أخصائي التغذية العلاجية ومحور الأمعاء-الدماغ' :
+                     newRole === 'social_worker' ? 'أخصائي الخدمة الاجتماعية النفسية والإرشاد' :
+                     newRole === 'supervisor' ? 'المشرف الإكلينيكي العام ورئيس الجودة' :
+                     newRole === 'reception' ? 'منسق الاستقبال وتنسيق المواعيد' :
+                     newRole === 'support' ? 'مسؤول الدعم الفني والأنظمة' : u.specialty
+        };
+      }
+      return u;
+    });
+
+    localStorage.setItem('coolmind_all_staff_users', JSON.stringify(updated));
+
+    // Update active staff session if current user was updated
+    const current = staffAuthService.getCurrentStaff();
+    if (current && current.id === userId) {
+      const found = updated.find(u => u.id === userId);
+      if (found) {
+        localStorage.setItem(STAFF_AUTH_KEY, JSON.stringify(found));
+      }
+    }
+
+    window.dispatchEvent(new CustomEvent('coolmind_staff_list_updated', { detail: updated }));
+    return updated;
+  },
+
   switchStaffUser: (userId: string): StaffUser => {
-    const user = DEFAULT_STAFF_USERS.find(u => u.id === userId) || DEFAULT_STAFF_USERS[0];
+    const all = staffAuthService.getAllStaffUsers();
+    const user = all.find(u => u.id === userId) || all[0];
     localStorage.setItem(STAFF_AUTH_KEY, JSON.stringify(user));
     return user;
   },

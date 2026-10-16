@@ -38,6 +38,11 @@ import {
 } from 'lucide-react';
 import { Doctor, Patient, ChatMessage } from '../types';
 import { MessageActionModal } from './MessageActionModal';
+import { 
+  AudioRecorderManager, 
+  formatAudioDuration, 
+  generateAudibleVoiceNoteDataUrl 
+} from '../utils/audioRecorder';
 
 interface Props {
   isOpen: boolean;
@@ -78,22 +83,20 @@ export const DoctorChatModal: React.FC<Props> = ({
   const [quotedMessage, setQuotedMessage] = useState<ChatMessage | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   
-  // Real Audio Recording State
+  // Real Audio Recording & Playback State
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const [playbackProgress, setPlaybackProgress] = useState<Record<string, number>>({});
+  const [liveVolume, setLiveVolume] = useState<number>(0);
+  const [audioPlaybackSpeed, setAudioPlaybackSpeed] = useState<Record<string, number>>({});
+  const [audioCurrentTimes, setAudioCurrentTimes] = useState<Record<string, number>>({});
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recordingTimerRef = useRef<any>(null);
-  const audioPlaybackIntervalRef = useRef<any>(null);
-  
-  // Real MediaRecorder references
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const recorderManagerRef = useRef<AudioRecorderManager>(new AudioRecorderManager());
   const currentAudioElementRef = useRef<HTMLAudioElement | null>(null);
 
   // Quick suggestions with clinical categories and compact labels
@@ -157,169 +160,69 @@ export const DoctorChatModal: React.FC<Props> = ({
   // Clean up playback and streams on unmount
   useEffect(() => {
     return () => {
-      if (audioPlaybackIntervalRef.current) clearInterval(audioPlaybackIntervalRef.current);
       if (currentAudioElementRef.current) {
         currentAudioElementRef.current.pause();
       }
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(t => t.stop());
-      }
+      recorderManagerRef.current.cancel();
     };
   }, []);
 
   if (!isOpen || !doctor) return null;
 
-  // Real Microphone start with wide codec fallback
+  // Real Microphone start with live volume meter and broad fallback
   const handleStartRecording = async () => {
     setAudioError(null);
     setIsAttachmentMenuOpen(false);
-    audioChunksRef.current = [];
+    setIsRecording(true);
+    setLiveVolume(0);
 
-    try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          } 
-        });
-        mediaStreamRef.current = stream;
+    const res = await recorderManagerRef.current.start((vol) => {
+      setLiveVolume(vol);
+    });
 
-        // Choose best supported audio MIME type
-        let selectedMimeType = '';
-        if (typeof MediaRecorder !== 'undefined') {
-          const supportedTypes = [
-            'audio/webm;codecs=opus',
-            'audio/webm',
-            'audio/mp4',
-            'audio/aac',
-            'audio/ogg;codecs=opus',
-            'audio/ogg'
-          ];
-          for (const type of supportedTypes) {
-            if (MediaRecorder.isTypeSupported(type)) {
-              selectedMimeType = type;
-              break;
-            }
-          }
-        }
-
-        const options = selectedMimeType ? { mimeType: selectedMimeType } : undefined;
-        const recorder = options ? new MediaRecorder(stream, options) : new MediaRecorder(stream);
-        
-        mediaRecorderRef.current = recorder;
-
-        recorder.ondataavailable = (event) => {
-          if (event.data && event.data.size > 0) {
-            audioChunksRef.current.push(event.data);
-          }
-        };
-
-        recorder.start(200);
-        setIsRecording(true);
-      } else {
-        setAudioError('متصفحك لا يدعم تسجيل الصوت المباشر.');
-        setIsRecording(true);
-      }
-    } catch (err: any) {
-      console.warn('Microphone error / permission denied:', err);
-      setAudioError('يرجى السماح بصلاحية الميكروفون في المتصفح لتسجيل صوتك.');
-      setIsRecording(true);
+    if (res.errorNotice) {
+      setAudioError(res.errorNotice);
     }
   };
 
   const handleCancelRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      try {
-        mediaRecorderRef.current.stop();
-      } catch (e) {}
-    }
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach(t => t.stop());
-      mediaStreamRef.current = null;
-    }
-    audioChunksRef.current = [];
+    recorderManagerRef.current.cancel();
     setIsRecording(false);
     setRecordingSeconds(0);
+    setLiveVolume(0);
     setAudioError(null);
   };
 
-  const handleSendVoiceNote = () => {
-    const finalDuration = Math.max(1, recordingSeconds);
-    const durationFormatted = `${Math.floor(finalDuration / 60)}:${(finalDuration % 60).toString().padStart(2, '0')}`;
-    const recorder = mediaRecorderRef.current;
+  const handleSendVoiceNote = async () => {
+    const finalSeconds = Math.max(1, recordingSeconds);
+    const result = await recorderManagerRef.current.stop('patient');
+    const finalDuration = result.durationSeconds || finalSeconds;
+    const durationFormatted = result.formattedDuration || formatAudioDuration(finalDuration);
 
-    if (recorder && recorder.state !== 'inactive') {
-      recorder.onstop = () => {
-        let audioBlobUrl = '';
-        if (audioChunksRef.current.length > 0) {
-          const mimeType = recorder.mimeType || 'audio/webm';
-          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-          audioBlobUrl = URL.createObjectURL(audioBlob);
-        }
-
-        if (mediaStreamRef.current) {
-          mediaStreamRef.current.getTracks().forEach(t => t.stop());
-          mediaStreamRef.current = null;
-        }
-
-        onSendMessage(
-          `🎙️ تسجيل صوتي (${durationFormatted})`,
-          doctor.id,
-          {
-            audioUrl: audioBlobUrl || 'voice-note',
-            audioDurationSeconds: finalDuration,
-            replyTo: quotedMessage ? { id: quotedMessage.id, text: quotedMessage.text, senderName: quotedMessage.senderName } : undefined
-          }
-        );
-        setQuotedMessage(null);
-      };
-
-      try {
-        recorder.requestData();
-        recorder.stop();
-      } catch (e) {
-        if (mediaStreamRef.current) {
-          mediaStreamRef.current.getTracks().forEach(t => t.stop());
-          mediaStreamRef.current = null;
-        }
-        onSendMessage(`🎙️ تسجيل صوتي (${durationFormatted})`, doctor.id, {
-          audioUrl: 'voice-note',
-          audioDurationSeconds: finalDuration,
-          replyTo: quotedMessage ? { id: quotedMessage.id, text: quotedMessage.text, senderName: quotedMessage.senderName } : undefined
-        });
-        setQuotedMessage(null);
+    onSendMessage(
+      `🎙️ تسجيل صوتي (${durationFormatted})`,
+      doctor.id,
+      {
+        audioUrl: result.audioUrl,
+        audioDurationSeconds: finalDuration,
+        replyTo: quotedMessage ? { id: quotedMessage.id, text: quotedMessage.text, senderName: quotedMessage.senderName } : undefined
       }
-    } else {
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(t => t.stop());
-        mediaStreamRef.current = null;
-      }
-      onSendMessage(
-        `🎙️ تسجيل صوتي (${durationFormatted})`,
-        doctor.id,
-        {
-          audioUrl: 'voice-note',
-          audioDurationSeconds: finalDuration,
-          replyTo: quotedMessage ? { id: quotedMessage.id, text: quotedMessage.text, senderName: quotedMessage.senderName } : undefined
-        }
-      );
-      setQuotedMessage(null);
-    }
+    );
 
+    setQuotedMessage(null);
     setIsRecording(false);
     setRecordingSeconds(0);
+    setLiveVolume(0);
     setAudioError(null);
+    showToast('تم إرسال التسجيل الصوتي بنجاح 🎙️');
   };
 
-  // Play audio (actual recorded blob or synthesized wave)
-  const handleTogglePlayAudio = (msgId: string, audioUrl?: string, totalDuration: number = 6) => {
+  // Play audio (real recorded base64/blob or synthesized waveform)
+  const handleTogglePlayAudio = (msgId: string, rawAudioUrl?: string, totalDuration: number = 6) => {
     if (playingAudioId === msgId) {
       if (currentAudioElementRef.current) {
         currentAudioElementRef.current.pause();
       }
-      if (audioPlaybackIntervalRef.current) clearInterval(audioPlaybackIntervalRef.current);
       setPlayingAudioId(null);
       return;
     }
@@ -327,69 +230,72 @@ export const DoctorChatModal: React.FC<Props> = ({
     if (currentAudioElementRef.current) {
       currentAudioElementRef.current.pause();
     }
-    if (audioPlaybackIntervalRef.current) clearInterval(audioPlaybackIntervalRef.current);
+
+    // Resolve playable URL (generate sound wave if missing or dummy)
+    let playableUrl = rawAudioUrl;
+    if (!playableUrl || playableUrl === 'voice-note' || playableUrl.length < 10) {
+      playableUrl = generateAudibleVoiceNoteDataUrl(totalDuration, 'patient');
+    }
 
     setPlayingAudioId(msgId);
     setPlaybackProgress(prev => ({ ...prev, [msgId]: 0 }));
 
-    if (audioUrl && audioUrl.startsWith('blob:')) {
-      const audio = new Audio(audioUrl);
+    try {
+      const audio = new Audio(playableUrl);
       currentAudioElementRef.current = audio;
 
-      audio.play().catch(e => {
-        console.warn('Direct audio play notice:', e);
+      const currentSpeed = audioPlaybackSpeed[msgId] || 1;
+      audio.playbackRate = currentSpeed;
+
+      audio.play().catch(err => {
+        console.warn('Audio play notice:', err);
       });
 
       audio.ontimeupdate = () => {
         if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
           const prog = Math.min(100, Math.round((audio.currentTime / audio.duration) * 100));
           setPlaybackProgress(prev => ({ ...prev, [msgId]: prog }));
+          setAudioCurrentTimes(prev => ({ ...prev, [msgId]: audio.currentTime }));
         }
       };
 
       audio.onended = () => {
         setPlayingAudioId(null);
         setPlaybackProgress(prev => ({ ...prev, [msgId]: 100 }));
+        setAudioCurrentTimes(prev => ({ ...prev, [msgId]: totalDuration }));
       };
 
       audio.onerror = () => {
-        setPlayingAudioId(null);
-      };
-    } else {
-      try {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioCtx) {
-          const ctx = new AudioCtx();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(320, ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(480, ctx.currentTime + 0.3);
-          gain.gain.setValueAtTime(0.06, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start();
-          osc.stop(ctx.currentTime + 1.2);
-        }
-      } catch (e) {}
-
-      const stepMs = 200;
-      const totalMs = totalDuration * 1000;
-      let elapsedMs = 0;
-
-      audioPlaybackIntervalRef.current = setInterval(() => {
-        elapsedMs += stepMs;
-        const progress = Math.min(100, Math.round((elapsedMs / totalMs) * 100));
-        setPlaybackProgress(prev => ({ ...prev, [msgId]: progress }));
-
-        if (elapsedMs >= totalMs) {
-          clearInterval(audioPlaybackIntervalRef.current);
+        // Fallback to synthesized audio if data was corrupted
+        try {
+          const fallback = generateAudibleVoiceNoteDataUrl(totalDuration, 'patient');
+          const fallbackAudio = new Audio(fallback);
+          currentAudioElementRef.current = fallbackAudio;
+          fallbackAudio.play().catch(() => {});
+        } catch (e) {
           setPlayingAudioId(null);
-          setPlaybackProgress(prev => ({ ...prev, [msgId]: 100 }));
         }
-      }, stepMs);
+      };
+    } catch (e) {
+      setPlayingAudioId(null);
     }
+  };
+
+  const handleSeekAudio = (msgId: string, targetPercent: number) => {
+    if (playingAudioId === msgId && currentAudioElementRef.current && currentAudioElementRef.current.duration) {
+      currentAudioElementRef.current.currentTime = (targetPercent / 100) * currentAudioElementRef.current.duration;
+      setPlaybackProgress(prev => ({ ...prev, [msgId]: targetPercent }));
+    }
+  };
+
+  const handleToggleSpeed = (msgId: string) => {
+    const currentSpeed = audioPlaybackSpeed[msgId] || 1;
+    const nextSpeed = currentSpeed === 1 ? 1.5 : currentSpeed === 1.5 ? 2 : 1;
+    setAudioPlaybackSpeed(prev => ({ ...prev, [msgId]: nextSpeed }));
+    if (playingAudioId === msgId && currentAudioElementRef.current) {
+      currentAudioElementRef.current.playbackRate = nextSpeed;
+    }
+  };
   };
 
   const handleSend = (e: React.FormEvent) => {
@@ -765,40 +671,71 @@ export const DoctorChatModal: React.FC<Props> = ({
 
                       {/* Voice Note Custom Player */}
                       {isVoice ? (
-                        <div className="space-y-2 min-w-[220px]" onClick={e => e.stopPropagation()}>
-                          <div className="flex items-center gap-3">
+                        <div className="space-y-2 min-w-[240px] sm:min-w-[280px]" onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center gap-2.5">
                             <button
                               type="button"
                               onClick={() => handleTogglePlayAudio(msg.id || String(idx), msg.audioUrl, msg.audioDurationSeconds || 6)}
-                              className={`w-9 h-9 rounded-full flex items-center justify-center transition shrink-0 cursor-pointer shadow-sm ${
+                              className={`w-9 h-9 rounded-full flex items-center justify-center transition shrink-0 cursor-pointer shadow-sm hover:scale-105 ${
                                 isPatient 
                                   ? 'bg-white text-teal-700 hover:bg-teal-50' 
                                   : 'bg-teal-600 text-white hover:bg-teal-700'
                               }`}
+                              title={isPlaying ? 'إيقاف مؤقت' : 'تشغيل التسجيل الصوتي'}
                             >
                               {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5 rtl:rotate-180" />}
                             </button>
 
-                            <div className="flex-1 space-y-1">
-                              {/* Animated Audio Wave Bars */}
-                              <div className="flex items-center gap-1 h-5">
-                                {[35, 75, 45, 90, 60, 100, 50, 80, 40, 95, 65, 30, 85, 55].map((h, i) => (
-                                  <span
-                                    key={i}
-                                    className={`w-1 rounded-full transition-all duration-150 ${
-                                      isPatient ? 'bg-teal-200' : 'bg-teal-500'
-                                    } ${isPlaying ? 'animate-pulse' : ''}`}
-                                    style={{ 
-                                      height: isPlaying ? `${Math.max(25, Math.min(100, h * (1 + (i % 3) * 0.2)))}%` : `${h}%`,
-                                      opacity: (i / 14) * 100 <= progress ? 1 : 0.45
-                                    }}
-                                  />
-                                ))}
+                            <div className="flex-1 space-y-1 min-w-0">
+                              {/* Interactive Audio Wave Bars (Clickable to seek) */}
+                              <div 
+                                className="flex items-center gap-1 h-6 cursor-pointer py-1"
+                                onClick={(e) => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const clickX = e.clientX - rect.left;
+                                  const pct = Math.max(0, Math.min(100, Math.round((clickX / rect.width) * 100)));
+                                  handleSeekAudio(msg.id || String(idx), pct);
+                                }}
+                                title="انقر للتقديم أو التأخير في الصوت"
+                              >
+                                {[35, 75, 45, 90, 60, 100, 50, 80, 40, 95, 65, 30, 85, 55, 70, 45].map((h, i) => {
+                                  const barPercent = (i / 15) * 100;
+                                  const isPassed = barPercent <= progress;
+                                  return (
+                                    <span
+                                      key={i}
+                                      className={`w-1 rounded-full transition-all duration-150 ${
+                                        isPatient 
+                                          ? isPassed ? 'bg-amber-300' : 'bg-teal-200/50' 
+                                          : isPassed ? 'bg-teal-600' : 'bg-slate-300 dark:bg-slate-600'
+                                      } ${isPlaying && isPassed ? 'animate-pulse' : ''}`}
+                                      style={{ 
+                                        height: isPlaying ? `${Math.max(25, Math.min(100, h * (1 + (i % 3) * 0.15)))}%` : `${h}%`,
+                                      }}
+                                    />
+                                  );
+                                })}
                               </div>
 
-                              <div className="flex items-center justify-between text-[10px] opacity-80 font-mono">
+                              <div className="flex items-center justify-between text-[10px] opacity-85 font-mono">
                                 <span>{isPlaying ? 'جاري الاستماع...' : 'رسالة صوتية'}</span>
-                                <span>{msg.audioDurationSeconds ? `${msg.audioDurationSeconds} ثانية` : '0:06'}</span>
+                                <div className="flex items-center gap-2">
+                                  <span>
+                                    {audioCurrentTimes[msg.id || String(idx)] 
+                                      ? formatTime(Math.floor(audioCurrentTimes[msg.id || String(idx)])) 
+                                      : '00:00'} / {formatTime(msg.audioDurationSeconds || 6)}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleSpeed(msg.id || String(idx))}
+                                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition cursor-pointer ${
+                                      isPatient ? 'bg-teal-700/80 hover:bg-teal-800 text-teal-100' : 'bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200'
+                                    }`}
+                                    title="تغيير سرعة الصوت"
+                                  >
+                                    {(audioPlaybackSpeed[msg.id || String(idx)] || 1)}x
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           </div>

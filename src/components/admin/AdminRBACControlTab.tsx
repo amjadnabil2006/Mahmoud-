@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   KeyRound, 
@@ -10,127 +10,32 @@ import {
   Users, 
   Sparkles, 
   RotateCcw,
-  Megaphone
+  Megaphone,
+  CheckCircle2,
+  RefreshCw
 } from 'lucide-react';
 import { UserRole } from '../../types';
+import { rbacService, FeaturePermission } from '../../services/rbac';
 
 interface Props {
   onLogAudit?: (action: string, target: string) => void;
   onPreviewRole?: (role: UserRole) => void;
 }
 
-interface FeaturePermission {
-  id: string;
-  nameAr: string;
-  category: string;
-  description: string;
-  rolesAllowed: Record<UserRole, boolean>;
-}
-
-const INITIAL_PERMISSIONS: FeaturePermission[] = [
-  {
-    id: 'e_rx_prescriptions',
-    nameAr: 'إصدار وتوقيع الوصفات الطبية النفسية (E-Rx)',
-    category: 'الطب النفسي والدوائي',
-    description: 'صلاحية اختيار الأدوية، تحديد الجرعات والمدة وتوليد الروشتة المعتمدة.',
-    rolesAllowed: {
-      psychiatrist: true,
-      psychologist: false,
-      nutritionist: false,
-      social_worker: false,
-      admin: true,
-      reception: false,
-      support: false,
-      supervisor: true
-    }
-  },
-  {
-    id: 'clinical_scales_runner',
-    nameAr: 'تطبيق وتصحيح المقاييس النفسية الرقمية',
-    category: 'التقييم والتشخيص',
-    description: 'تشغيل مقاييس PHQ-9, GAD-7, DASS-21 وحفظ النتائج في سجل المريض.',
-    rolesAllowed: {
-      psychiatrist: true,
-      psychologist: true,
-      nutritionist: false,
-      social_worker: false,
-      admin: true,
-      reception: false,
-      support: false,
-      supervisor: true
-    }
-  },
-  {
-    id: 'clinical_forms_soap',
-    nameAr: 'تدوين واعتماد ملاحظات الجلسات (SOAP Notes & MSE)',
-    category: 'التوثيق السريري',
-    description: 'فحص الحالة العقلية، تقييم خطورة الانتحار وتوثيق مجريات الجلسة.',
-    rolesAllowed: {
-      psychiatrist: true,
-      psychologist: true,
-      nutritionist: false,
-      social_worker: false,
-      admin: true,
-      reception: false,
-      support: false,
-      supervisor: true
-    }
-  },
-  {
-    id: 'nutrition_social_plans',
-    nameAr: 'إعداد وتوثيق الخطط الغذائية والاجتماعية',
-    category: 'الرعاية التكاملية',
-    description: 'حساب الاحتياجات، رصد المتلازمة الأيضية، ودراسة الحالة الاجتماعية.',
-    rolesAllowed: {
-      psychiatrist: true,
-      psychologist: false,
-      nutritionist: true,
-      social_worker: true,
-      admin: true,
-      reception: false,
-      support: false,
-      supervisor: true
-    }
-  },
-  {
-    id: 'financials_view',
-    nameAr: 'الاطلاع على الحسابات والمستحقات المالية',
-    category: 'المالية',
-    description: 'رؤية كشف الدخل ونسب المشاركة (75%) وطلب الصرف.',
-    rolesAllowed: {
-      psychiatrist: true,
-      psychologist: true,
-      nutritionist: true,
-      social_worker: true,
-      admin: true,
-      reception: false,
-      support: false,
-      supervisor: true
-    }
-  },
-  {
-    id: 'peer_consultations',
-    nameAr: 'المشاركة في استشارات الزملاء والإحالات',
-    category: 'التعاون المهني',
-    description: 'طرح استشارات بهوية مجهولة وطلب رأي ثانٍ من الأطباء والاستشاريين.',
-    rolesAllowed: {
-      psychiatrist: true,
-      psychologist: true,
-      nutritionist: true,
-      social_worker: true,
-      admin: true,
-      reception: false,
-      support: false,
-      supervisor: true
-    }
-  }
-];
-
 export const AdminRBACControlTab: React.FC<Props> = ({ onLogAudit, onPreviewRole }) => {
-  const [permissions, setPermissions] = useState<FeaturePermission[]>(INITIAL_PERMISSIONS);
+  const [permissions, setPermissions] = useState<FeaturePermission[]>(() => rbacService.getPermissions());
   const [broadcastMessage, setBroadcastMessage] = useState<string>('');
   const [targetBroadcastRole, setTargetBroadcastRole] = useState<string>('all');
   const [showBroadcastSuccess, setShowBroadcastSuccess] = useState<boolean>(false);
+  const [savedNotice, setSavedNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleRbacUpdate = () => {
+      setPermissions(rbacService.getPermissions());
+    };
+    window.addEventListener('coolmind_rbac_updated', handleRbacUpdate);
+    return () => window.removeEventListener('coolmind_rbac_updated', handleRbacUpdate);
+  }, []);
 
   const rolesList: { id: UserRole; label: string; badgeColor: string }[] = [
     { id: 'psychiatrist', label: 'طبيب نفسي (Psychiatrist)', badgeColor: 'teal' },
@@ -143,20 +48,29 @@ export const AdminRBACControlTab: React.FC<Props> = ({ onLogAudit, onPreviewRole
   ];
 
   const handleTogglePermission = (featId: string, role: UserRole) => {
-    setPermissions(prev => prev.map(p => {
-      if (p.id !== featId) return p;
-      const currentVal = p.rolesAllowed[role];
-      return {
-        ...p,
-        rolesAllowed: {
-          ...p.rolesAllowed,
-          [role]: !currentVal
-        }
-      };
-    }));
+    const updated = rbacService.togglePermission(featId, role);
+    setPermissions(updated);
+
+    const feat = updated.find(p => p.id === featId);
+    const newStatus = feat?.rolesAllowed[role] ? 'منح صلاحية' : 'حجب صلاحية';
+
+    setSavedNotice(`تم تحديث الصلاحية بنجاح: ${newStatus} (${feat?.nameAr}) لدور [${role}]`);
+    setTimeout(() => setSavedNotice(null), 3500);
 
     if (onLogAudit) {
-      onLogAudit(`تعديل مصفوفة الصلاحيات للميزة: ${featId}`, `الدور: ${role}`);
+      onLogAudit(`${newStatus}: ${feat?.nameAr}`, `الدور: ${role}`);
+    }
+  };
+
+  const handleResetDefaults = () => {
+    if (confirm('هل ترغب في إعادة ضبط مصفوفة الصلاحيات إلى التوزيع القياسي الافتراضي؟')) {
+      const reset = rbacService.resetToDefault();
+      setPermissions(reset);
+      setSavedNotice('تمت استعادة مصفوفة الصلاحيات الافتراضية المعتمدة.');
+      setTimeout(() => setSavedNotice(null), 3000);
+      if (onLogAudit) {
+        onLogAudit('استعادة الصلاحيات الافتراضية للعيادة', 'كافة الأدوار الإكلينيكية');
+      }
     }
   };
 
@@ -174,7 +88,7 @@ export const AdminRBACControlTab: React.FC<Props> = ({ onLogAudit, onPreviewRole
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-right">
       {/* Header */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
@@ -183,14 +97,32 @@ export const AdminRBACControlTab: React.FC<Props> = ({ onLogAudit, onPreviewRole
               <KeyRound className="w-6 h-6" />
             </span>
             <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-              التحكم بواجهات العاملين ومصفوفة الصلاحيات (RBAC Customization Matrix)
+              التحكم الفعلي بواجهات العاملين ومصفوفة الصلاحيات (RBAC Customization Matrix)
             </h2>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            مطلب الإدارة (8): تخصيص ميزات كل تخصص على حدة، إرسال تعاميم موجهة، ومعاينة المنظومة كدور.
+            مطلب الإدارة (8): تخصيص ميزات كل تخصص على حدة، حجب أو إتاحة الوصفات والتقارير والنماذج فعلياً في واجهات الأطباء.
           </p>
         </div>
+
+        <button
+          onClick={handleResetDefaults}
+          type="button"
+          className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+        >
+          <RotateCcw className="w-4 h-4" />
+          <span>استعادة الضبط الافتراضي</span>
+        </button>
       </div>
+
+      {/* Live Saved Alert */}
+      {savedNotice && (
+        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-bold rounded-xl flex items-center gap-2 animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{savedNotice}</span>
+          <span className="text-[10px] opacity-75 font-normal mr-auto">يتم تطبيق القيود فوراً على عيادة الطبيب المعني</span>
+        </div>
+      )}
 
       {/* Internal Staff Broadcast Banner Form */}
       <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-900 text-white p-5 rounded-2xl border border-indigo-500/30 shadow-md space-y-3">
@@ -203,7 +135,7 @@ export const AdminRBACControlTab: React.FC<Props> = ({ onLogAudit, onPreviewRole
           <input
             type="text"
             required
-            placeholder="اكتب التوجيه أو الإعلان الداخلي هنا (مثال: نرجو من جميع المعالجين تحديث أوقات التواجد للأسبوع القادم)..."
+            placeholder="اكتب التوجيه أو الإعلان الداخلي هنا (مثال: نرجو من جميع المعالجين الالتزام بتدوين ملاحظات SOAP خلال 24 ساعة)..."
             value={broadcastMessage}
             onChange={e => setBroadcastMessage(e.target.value)}
             className="flex-1 px-3.5 py-2.5 bg-slate-800/80 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400"
@@ -221,7 +153,7 @@ export const AdminRBACControlTab: React.FC<Props> = ({ onLogAudit, onPreviewRole
           </select>
           <button
             type="submit"
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all shadow-sm"
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all shadow-sm cursor-pointer"
           >
             نشر التعميم
           </button>
@@ -244,50 +176,54 @@ export const AdminRBACControlTab: React.FC<Props> = ({ onLogAudit, onPreviewRole
               مصفوفة التحكم بالميزات الإكلينيكية والتشغيلية لكل دور
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              انقر على أي علامة لتفعيل أو حجب الميزة فوراً عن ذلك التخصص.
+              انقر على أي علامة لتفعيل (أخضر) أو حجب (أحمر) الميزة فوراً عن ذلك التخصص. التعديلات تحفظ سحابياً وتطبق لحظياً.
             </p>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-right text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
-              <tr>
-                <th className="p-3.5 min-w-[200px]">الميزة الإكلينيكية / الإدارية</th>
+          <table className="w-full text-right border-collapse text-xs">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+                <th className="p-4 w-72">الميزة والوظيفة الإكلينيكية</th>
+                <th className="p-4 w-32">التصنيف</th>
                 {rolesList.map(r => (
-                  <th key={r.id} className="p-3 text-center min-w-[100px]">
-                    <div className="font-bold text-[11px]">{r.label.split(' ')[0]}</div>
-                    <div className="text-[9px] text-slate-400">{r.label.split(' ')[1] || ''}</div>
+                  <th key={r.id} className="p-4 text-center font-bold">
+                    <div className="text-xs">{r.label.split(' ')[0]}</div>
+                    <div className="text-[10px] text-slate-400 font-mono font-normal">
+                      {r.id === 'psychiatrist' ? 'طبيب' : r.id === 'psychologist' ? 'نفسي' : r.id === 'nutritionist' ? 'تغذية' : r.id === 'social_worker' ? 'اجتماعي' : r.id}
+                    </div>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {permissions.map(feat => (
-                <tr key={feat.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                  <td className="p-3.5">
-                    <span className="font-bold text-slate-900 dark:text-slate-100 block text-xs">
-                      {feat.nameAr}
-                    </span>
-                    <span className="text-[11px] text-slate-400 block mt-0.5">
-                      {feat.description}
+                <tr key={feat.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                  <td className="p-4">
+                    <div className="font-bold text-slate-900 dark:text-white text-xs">{feat.nameAr}</div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">{feat.description}</div>
+                  </td>
+                  <td className="p-4">
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
+                      {feat.category}
                     </span>
                   </td>
-
                   {rolesList.map(r => {
                     const isAllowed = feat.rolesAllowed[r.id];
                     return (
-                      <td key={r.id} className="p-3 text-center">
+                      <td key={r.id} className="p-4 text-center">
                         <button
                           onClick={() => handleTogglePermission(feat.id, r.id)}
-                          className={`w-8 h-8 rounded-xl font-bold flex items-center justify-center mx-auto transition-all ${
+                          type="button"
+                          className={`w-8 h-8 rounded-xl inline-flex items-center justify-center transition-all cursor-pointer shadow-xs ${
                             isAllowed
-                              ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:bg-slate-200'
+                              ? 'bg-emerald-500 hover:bg-emerald-600 text-white ring-2 ring-emerald-500/30'
+                              : 'bg-rose-100 dark:bg-rose-950/60 hover:bg-rose-200 text-rose-600 dark:text-rose-400'
                           }`}
-                          title={isAllowed ? 'مفعل (انقر للتعطيل)' : 'معطل (انقر للتفعيل)'}
+                          title={`${isAllowed ? 'مفعل ومسموح' : 'محجوب وممنوع'} - انقر للتبديل`}
                         >
-                          {isAllowed ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                          {isAllowed ? <Check className="w-4 h-4 stroke-[2.5]" /> : <X className="w-4 h-4 stroke-[2.5]" />}
                         </button>
                       </td>
                     );
@@ -296,6 +232,22 @@ export const AdminRBACControlTab: React.FC<Props> = ({ onLogAudit, onPreviewRole
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-4">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              <span>أخضر: ميزة متاحة ومصرح بها للدور</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+              <span>أحمر: محجوبة بقفل أمني وتظهر مقفلة للممارس</span>
+            </span>
+          </div>
+          <span className="font-mono text-[11px]">
+            التحديثات تُسجل في الـ Audit Log فوراً
+          </span>
         </div>
       </div>
     </div>
